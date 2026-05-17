@@ -16,6 +16,3 @@ run = ["bash", "scripts/coze-deploy-run.sh"]
 [deploy.profile]
 kind = "service"
 flavor = "web"
-
-[subprojects]
-path = ["PinDou-pixel"]
