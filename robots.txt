@@ -1,0 +1,11 @@
+# https://pindou.skin/robots.txt
+# 拼豆王国 robots.txt
+
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://pindou.skin/sitemap.xml
+
+# 爬虫友好的延迟（可选）
+Crawl-delay: 1
