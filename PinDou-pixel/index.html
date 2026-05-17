@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#667eea">
+    <title>拼豆王国 - 像素艺术创作平台</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            --secondary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        }
+
+        .hero-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--primary-gradient);
+            position: relative;
+            overflow: hidden;
+            padding: 100px 20px 60px;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: -30%;
+            right: -15%;
+            width: 600px;
+            height: 600px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .hero-section::after {
+            content: '';
+            position: absolute;
+            bottom: -20%;
+            left: -10%;
+            width: 400px;
+            height: 400px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+            animation: float 8s ease-in-out infinite reverse;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+
+        .hero-container {
+            max-width: 1200px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 60px;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-text {
+            text-align: left;
+        }
+
+        .hero-text h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: #f5f5f5;
+            margin-bottom: 20px;
+            line-height: 1.1;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .hero-text p {
+            font-size: 1.25rem;
+            color: rgba(255, 255, 255, 0.95);
+            margin-bottom: 35px;
+            max-width: 500px;
+            font-weight: 400;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .hero-btn-primary {
+            padding: 16px 40px;
+            background: white;
+            color: var(--primary-color);
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .hero-btn-primary:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.25);
+        }
+
+        .hero-btn-secondary {
+            padding: 16px 40px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            color: #f5f5f5;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border: 2px solid rgba(245, 245, 245, 0.3);
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .hero-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .hero-visual {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .bead-container {
+            width: 380px;
+            height: 380px;
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            gap: 6px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .bead {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            box-shadow: inset 0 -4px 8px rgba(0, 0, 0, 0.2), 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .bead:hover {
+            transform: scale(1.15);
+            z-index: 10;
+        }
+
+        .bead-yellow { background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); }
+        .bead-pink { background: linear-gradient(135deg, #FF69B4 0%, #FF1493 100%); }
+        .bead-blue { background: linear-gradient(135deg, #4169E1 0%, #00CED1 100%); }
+        .bead-green { background: linear-gradient(135deg, #32CD32 0%, #90EE90 100%); }
+        .bead-purple { background: linear-gradient(135deg, #9932CC 0%, #DDA0DD 100%); }
+        .bead-orange { background: linear-gradient(135deg, #FF8C00 0%, #FFD700 100%); }
+        .bead-red { background: linear-gradient(135deg, #DC143C 0%, #FF6347 100%); }
+        .bead-cyan { background: linear-gradient(135deg, #00CED1 0%, #E0FFFF 100%); }
+        .bead-empty { background: rgba(255, 255, 255, 0.05); }
+
+        .features-section {
+            padding: 80px 20px;
+            background: white;
+            position: relative;
+        }
+
+        .features-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: var(--secondary-gradient);
+        }
+
+        .features-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .features-header h2 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #1a1a2e;
+            margin-bottom: 15px;
+            letter-spacing: -0.5px;
+        }
+
+        .features-header p {
+            font-size: 1.15rem;
+            color: #5a5a7a;
+            max-width: 600px;
+            margin: 0 auto;
+            font-weight: 500;
+        }
+
+        .features-grid {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+        }
+
+        .feature-card {
+            background: var(--bg-light);
+            padding: 40px 30px;
+            border-radius: 24px;
+            text-align: center;
+            transition: all 0.4s ease;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100px;
+            height: 100px;
+            background: var(--secondary-gradient);
+            opacity: 0;
+            border-radius: 50%;
+            transition: all 0.4s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.15);
+            border-color: rgba(102, 126, 234, 0.2);
+        }
+
+        .feature-card:hover::before {
+            opacity: 0.05;
+            transform: scale(3);
+        }
+
+        .feature-icon {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            display: inline-block;
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover .feature-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .feature-card h3 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 12px;
+        }
+
+        .feature-card p {
+            font-size: 0.95rem;
+            color: #6b6b8a;
+            line-height: 1.6;
+        }
+
+        .quick-start-section {
+            padding: 80px 20px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e8eaf6 100%);
+        }
+
+        .quick-start-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 30px;
+            padding: 60px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+        }
+
+        .quick-start-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .quick-start-header h2 {
+            font-size: 2.3rem;
+            font-weight: 800;
+            color: #1a1a2e;
+            margin-bottom: 15px;
+            letter-spacing: -0.5px;
+        }
+
+        .quick-start-header p {
+            font-size: 1.1rem;
+            color: #5a5a7a;
+            font-weight: 500;
+        }
+
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+        }
+
+        .step-card {
+            text-align: center;
+            position: relative;
+        }
+
+        .step-number {
+            width: 50px;
+            height: 50px;
+            background: var(--secondary-gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #f5f5f5;
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin: 0 auto 20px;
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .step-card:hover .step-number {
+            transform: scale(1.1);
+            box-shadow: 0 12px 30px rgba(99, 102, 241, 0.4);
+        }
+
+        .step-card h4 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+        }
+
+        .step-card p {
+            font-size: 0.9rem;
+            color: #6b6b8a;
+        }
+
+        .step-arrow {
+            display: none;
+        }
+
+        @media (min-width: 768px) {
+            .steps-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+            
+            .step-card:not(:last-child)::after {
+                content: '→';
+                position: absolute;
+                top: 25px;
+                right: -15px;
+                font-size: 1.5rem;
+                color: var(--border-color);
+            }
+        }
+
+        .stats-section {
+            padding: 80px 20px;
+            background: var(--primary-gradient);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stats-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        .stats-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .stat-card {
+            text-align: center;
+            color: #f5f5f5;
+            padding: 20px;
+            background: rgba(245, 245, 245, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .stat-value {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #ffffff 0%, #f0f0ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 2px 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.95;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        @media (max-width: 1024px) {
+            .hero-container {
+                grid-template-columns: 1fr;
+                gap: 40px;
+                text-align: center;
+            }
+
+            .hero-text {
+                text-align: center;
+            }
+
+            .hero-text h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero-text p {
+                margin: 0 auto 30px;
+            }
+
+            .bead-container {
+                width: 300px;
+                height: 300px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero-section {
+                padding: 80px 15px 40px;
+            }
+
+            .hero-text h1 {
+                font-size: 2rem;
+            }
+
+            .hero-text p {
+                font-size: 1rem;
+            }
+
+            .hero-buttons {
+                justify-content: center;
+            }
+
+            .hero-btn-primary,
+            .hero-btn-secondary {
+                padding: 14px 30px;
+                font-size: 1rem;
+            }
+
+            .bead-container {
+                width: 250px;
+                height: 250px;
+                padding: 15px;
+                gap: 5px;
+            }
+
+            .features-header h2 {
+                font-size: 1.8rem;
+            }
+
+            .features-grid {
+                gap: 20px;
+            }
+
+            .feature-card {
+                padding: 30px 20px;
+            }
+
+            .quick-start-container {
+                padding: 40px 20px;
+            }
+
+            .quick-start-header h2 {
+                font-size: 1.6rem;
+            }
+
+            .stat-value {
+                font-size: 2.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero-text h1 {
+                font-size: 1.75rem;
+            }
+
+            .bead-container {
+                width: 200px;
+                height: 200px;
+            }
+
+            .features-header h2 {
+                font-size: 1.5rem;
+            }
+
+            .stats-container {
+                gap: 25px;
+            }
+
+            .stat-value {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="#home" class="brand-link">
+                    <img src="logo.svg" alt="拼豆王国" class="brand-icon">
+                    <span class="brand-text">拼豆王国</span>
+                </a>
+            </div>
+            <div class="nav-menu">
+                <a href="#home" class="nav-link active">首页</a>
+                <a href="#generator" class="nav-link">生成器</a>
+                <a href="colors.html" class="nav-link">色卡</a>
+                <a href="about.html" class="nav-link">拼豆历史</a>
+                <a href="library.html" class="nav-link">素材库</a>
+            </div>
+            <button class="nav-toggle" id="navToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="hero-section" id="home">
+        <div class="hero-container">
+            <div class="hero-text">
+                <h1>🎨 拼豆王国</h1>
+                <p>将你的照片转换为精美的拼豆图案，释放创意灵感</p>
+                <div class="hero-buttons">
+                    <a href="#generator" class="hero-btn-primary">🎨 开始制作</a>
+                    <a href="about.html" class="hero-btn-secondary">📖 了解更多</a>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="bead-container">
+                    <div class="bead bead-yellow"></div>
+                    <div class="bead bead-pink"></div>
+                    <div class="bead bead-blue"></div>
+                    <div class="bead bead-green"></div>
+                    <div class="bead bead-purple"></div>
+                    <div class="bead bead-orange"></div>
+                    <div class="bead bead-red"></div>
+                    <div class="bead bead-cyan"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-yellow"></div>
+                    <div class="bead bead-pink"></div>
+                    <div class="bead bead-blue"></div>
+                    <div class="bead bead-green"></div>
+                    <div class="bead bead-purple"></div>
+                    <div class="bead bead-orange"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-yellow"></div>
+                    <div class="bead bead-pink"></div>
+                    <div class="bead bead-blue"></div>
+                    <div class="bead bead-green"></div>
+                    <div class="bead bead-purple"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-yellow"></div>
+                    <div class="bead bead-pink"></div>
+                    <div class="bead bead-blue"></div>
+                    <div class="bead bead-green"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-yellow"></div>
+                    <div class="bead bead-pink"></div>
+                    <div class="bead bead-blue"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-yellow"></div>
+                    <div class="bead bead-pink"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-yellow"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                    <div class="bead bead-empty"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="features-section">
+        <div class="features-header">
+            <h2>为什么选择我们</h2>
+            <p>专业的拼豆图纸生成工具，让你的创意更加精彩</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">📷</div>
+                <h3>智能图片转换</h3>
+                <p>支持多种图片格式，自动将照片转换为拼豆图案，保留原图精髓</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎨</div>
+                <h3>291种颜色</h3>
+                <p>完整的MARD拼豆色库，精准匹配每一个颜色，让作品更加绚丽</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📐</div>
+                <h3>多种尺寸</h3>
+                <p>支持标准拼豆板尺寸，从迷你到超大尺寸，满足各种需求</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📥</div>
+                <h3>一键导出</h3>
+                <p>下载高清图纸和材料清单，方便打印和购买所需拼豆</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="quick-start-section">
+        <div class="quick-start-container">
+            <div class="quick-start-header">
+                <h2>快速开始</h2>
+                <p>只需四步，轻松制作专属拼豆图案</p>
+            </div>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <h4>上传图片</h4>
+                    <p>选择你喜欢的照片或图片</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <h4>调整参数</h4>
+                    <p>设置像素大小和颜色数量</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <h4>生成图纸</h4>
+                    <p>一键生成拼豆图案</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">4</div>
+                    <h4>下载打印</h4>
+                    <p>下载图纸开始制作</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="stats-section">
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-value">291</div>
+                <div class="stat-label">种颜色</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">10K+</div>
+                <div class="stat-label">用户使用</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">100+</div>
+                <div class="stat-label">图案模板</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">50K+</div>
+                <div class="stat-label">图纸生成</div>
+            </div>
+        </div>
+    </section>
+
+    <main class="main-content" id="generator">
+        <div class="content-wrapper">
+            <div class="generator-grid">
+                <div class="generator-left">
+                    <div class="upload-section">
+                        <div class="upload-area" id="uploadArea">
+                            <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                            <label for="imageInput" class="upload-label">
+                                <div class="upload-icon">📷</div>
+                                <p>点击或拖拽上传图片</p>
+                                <p class="hint">支持 JPG、PNG、GIF 格式</p>
+                            </label>
+                        </div>
+                        
+                        <div class="crop-section" id="cropSection" style="display: none;">
+                            <h3>裁剪图片</h3>
+                            <div class="crop-container">
+                                <canvas id="cropCanvas"></canvas>
+                            </div>
+                            <div class="crop-controls">
+                                <button id="confirmCropBtn" class="btn btn-primary">✂️ 确认裁剪</button>
+                                <button id="cancelCropBtn" class="btn btn-secondary">取消</button>
+                            </div>
+                            <div class="crop-ratio">
+                                <span>比例:</span>
+                                <button id="squareRatioBtn" class="ratio-btn active">1:1</button>
+                                <button id="fourThreeRatioBtn" class="ratio-btn">4:3</button>
+                                <button id="sixteenNineRatioBtn" class="ratio-btn">16:9</button>
+                                <button id="freeRatioBtn" class="ratio-btn">自由</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="controls-section">
+                        <div class="control-row">
+                            <div class="control-group">
+                                <label for="pixelSize">像素:</label>
+                                <input type="range" id="pixelSize" min="1" max="80" value="15">
+                                <span id="pixelSizeValue">15</span>px
+                            </div>
+                            <div class="control-group">
+                                <label for="colorCount">颜色:</label>
+                                <input type="range" id="colorCount" min="2" max="291" value="48">
+                                <span id="colorCountValue">48</span>色
+                            </div>
+                            <div class="control-group">
+                                <label for="paletteSelect">色库:</label>
+                                <select id="paletteSelect">
+                                    <option value="mard291">MARD全色291</option>
+                                    <option value="mard221">MARD标准221</option>
+                                    <option value="artkal">Artkal色卡</option>
+                                    <option value="artkalMini">Artkal Mini小颗豆</option>
+                                    <option value="perler">Perler北美色卡</option>
+                                    <option value="hama">Hama日欧色卡</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="control-row">
+                            <div class="control-group">
+                                <label for="gridSize">网格:</label>
+                                <select id="gridSize">
+                                    <option value="15x15">15×15</option>
+                                    <option value="29x29" selected>29×29</option>
+                                    <option value="32x32">32×32</option>
+                                    <option value="58x58">58×58</option>
+                                    <option value="64x64">64×64</option>
+                                    <option value="87x58">87×58</option>
+                                    <option value="104x104">104×104</option>
+                                    <option value="custom">自定义</option>
+                                </select>
+                            </div>
+                            <div class="control-group" id="customGrid" style="display: none;">
+                                <input type="number" id="gridWidth" min="5" max="200" value="29"> × 
+                                <input type="number" id="gridHeight" min="5" max="200" value="29">
+                            </div>
+                            <div class="control-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="showGrid" checked>
+                                    网格
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="generator-right">
+                    <div class="preview-section">
+                        <div class="preview-container">
+                            <div class="preview-box">
+                                <h3>原图</h3>
+                                <div id="originalImage" class="image-container">
+                                    <div class="placeholder">
+                                        <span>🖼️</span>
+                                        <p>请上传图片</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="preview-box pixel-box">
+                                <h3>拼豆效果</h3>
+                                <div id="pixelatedImage" class="pixel-art-container">
+                                    <div class="placeholder">
+                                        <span>🎨</span>
+                                        <p>效果预览</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="actions-section primary-actions">
+                        <button id="generateBtn" class="btn btn-primary btn-lg">🎨 生成图纸</button>
+                        <button id="downloadPureBtn" class="btn btn-secondary btn-lg" disabled>📥︎ ️纯像素图</button>
+                        <button id="downloadFullBtn" class="btn btn-secondary btn-lg" disabled>📥 全信息图</button>
+                        <button id="exportCsvBtn" class="btn btn-secondary btn-lg" disabled>📋 材料清单</button>
+                        <button id="clearBtn" class="btn btn-danger">🗑️ 清空重置</button>
+                    </div>
+
+                    <div class="stats-section" id="statsSection">
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <span class="stat-icon">🧮</span>
+                                <span class="stat-label">总拼豆</span>
+                                <span class="stat-value" id="totalBeads">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-icon">🎨</span>
+                                <span class="stat-label">颜色</span>
+                                <span class="stat-value" id="colorCountUsed">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-icon">📐</span>
+                                <span class="stat-label">尺寸</span>
+                                <span class="stat-value" id="gridDimensions">0×0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="color-palette-section">
+                        <h3>配色方案</h3>
+                        <div id="colorPalette" class="color-palette">
+                            <p class="placeholder">颜色将在这里显示</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <section class="about-section" id="about">
+        <div class="about-container">
+            <h2>🎨 关于拼豆</h2>
+            <p>拼豆（Perler Beads）是一种创意手工玩具，通过将彩色小珠子排列成图案，然后用熨斗加热使其融化粘合，制作出各种可爱的作品。</p>
+            
+            <div class="about-grid">
+                <div class="about-card">
+                    <h3>🎯 拼豆玩法</h3>
+                    <ol>
+                        <li>在拼豆板上排列珠子</li>
+                        <li>用熨斗加热使珠子融化</li>
+                        <li>冷却后取下完成作品</li>
+                    </ol>
+                </div>
+                <div class="about-card">
+                    <h3>📏 常用尺寸</h3>
+                    <ul>
+                        <li>标准板: 29×29 颗</li>
+                        <li>大四板: 58×58 颗</li>
+                        <li>超大板: 104×104 颗</li>
+                    </ul>
+                </div>
+                <div class="about-card">
+                    <h3>🎨 MARD色卡</h3>
+                    <p>MARD是国内最受欢迎的拼豆品牌，拥有291种丰富颜色，涵盖各种色系，满足你的创意需求。</p>
+                    <a href="colors.html" class="color-link">查看完整色卡</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <span class="brand-icon">🎨</span>
+                <span class="brand-text">拼豆王国</span>
+            </div>
+            <p>© 2024 拼豆王国 | 使用时请确保图片版权合规</p>
+        </div>
+    </footer>
+
+    <div id="toast" style="display: none;">消息提示</div>
+
+    <script src="colors.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

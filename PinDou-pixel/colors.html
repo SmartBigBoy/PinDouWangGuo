@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Palette - Perler Beads</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+            min-height: 100vh;
+        }
+
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            height: 64px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .colors-page {
+            padding-top: 80px;
+            min-height: 100vh;
+        }
+
+        .colors-container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .colors-layout {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            gap: 24px;
+        }
+
+        .colors-sidebar {
+            position: sticky;
+            top: 88px;
+            height: fit-content;
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .sidebar-header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 20px;
+        }
+
+        .sidebar-header h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: #333;
+        }
+
+        #seriesNavList {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .palette-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+        }
+
+        .palette-item:hover {
+            background: #e9ecef;
+        }
+
+        .palette-item.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .palette-icon-wrapper {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: rgba(102, 126, 234, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .palette-item.active .palette-icon-wrapper {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .palette-icon {
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .palette-info {
+            flex: 1;
+        }
+
+        .palette-name {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .colors-content {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .search-container {
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 12px 16px;
+            border: 1px solid #eee;
+            transition: all 0.2s ease;
+        }
+
+        .search-box:focus-within {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-icon {
+            margin-right: 12px;
+            opacity: 0.5;
+        }
+
+        #colorSearch {
+            flex: 1;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: 1rem;
+        }
+
+        #searchClear {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            opacity: 0.5;
+        }
+
+        #paletteIntro {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 24px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        #paletteIntro h3 {
+            margin: 0 0 8px 0;
+            font-size: 1.2rem;
+        }
+
+        #paletteIntro p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+
+        #color-series {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .color-series-section {
+            background: #fafafa;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .color-series-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-left: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .color-series-title {
+            margin: 0;
+            font-size: 1.1rem;
+            color: #333;
+        }
+
+        .color-series-count {
+            font-size: 0.85rem;
+            color: #888;
+            background: #fff;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
+        }
+
+        .color-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .color-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+
+        .color-card-swatch {
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .color-card-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: rgba(0, 0, 0, 0.6);
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+        }
+
+        .color-card-info {
+            padding: 10px;
+            text-align: center;
+        }
+
+        .color-card-hex {
+            font-size: 0.85rem;
+            color: #666;
+            font-family: 'Monaco', 'Consolas', monospace;
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 2000;
+        }
+
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        @media (max-width: 1024px) {
+            .color-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .colors-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .colors-sidebar {
+                position: static;
+            }
+
+            .color-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="index.html" class="brand-link">
+                    <img src="logo.svg" alt="拼豆王国" class="brand-icon">
+                    <span class="brand-text">拼豆王国</span>
+                </a>
+            </div>
+            <div class="nav-menu">
+                <a href="index.html#home" class="nav-link">首页</a>
+                <a href="index.html#generator" class="nav-link">生成器</a>
+                <a href="colors.html" class="nav-link active">色卡</a>
+                <a href="about.html" class="nav-link">拼豆历史</a>
+                <a href="library.html" class="nav-link">素材库</a>
+            </div>
+            <button class="nav-toggle" id="navToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="colors-page">
+        <div class="colors-container">
+            <div class="colors-layout">
+                <aside class="colors-sidebar">
+                    <div class="sidebar-header">
+                        <h2>Palette Selection</h2>
+                    </div>
+                    <div id="seriesNavList"></div>
+                </aside>
+
+                <main class="colors-main">
+                    <div class="colors-content">
+                        <div class="search-container">
+                            <div class="search-box">
+                                <span class="search-icon">🔍</span>
+                                <input type="text" id="colorSearch" placeholder="Search color name or HEX..." />
+                                <button class="search-clear" id="searchClear" style="display: none;">✕</button>
+                            </div>
+                        </div>
+
+                        <div id="paletteIntro">
+                            <h3>Select a palette to view colors</h3>
+                            <p>Click on a color card to copy its HEX value</p>
+                        </div>
+
+                        <div id="color-series"></div>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script src="colors.js"></script>
+    <script>
+        (function() {
+            let currentPalette = 'mard291';
+
+            function init() {
+                renderSidebarPalettes();
+                renderColors();
+                setupEventListeners();
+            }
+
+            function renderSidebarPalettes() {
+                const container = document.getElementById('seriesNavList');
+                if (!container || !palettes) return;
+                
+                container.innerHTML = Object.entries(palettes).map(([key, palette]) => `
+                    <button class="palette-item${key === currentPalette ? ' active' : ''}" data-palette="${key}">
+                        <div class="palette-icon-wrapper">
+                            <span class="palette-icon">${key[0].toUpperCase()}</span>
+                        </div>
+                        <div class="palette-info">
+                            <span class="palette-name">${palette.name}</span>
+                        </div>
+                    </button>
+                `).join('');
+            }
+
+            function renderColors() {
+                const colorSeries = document.getElementById('color-series');
+                const paletteIntro = document.getElementById('paletteIntro');
+                if (!colorSeries || !palettes) return;
+
+                const palette = palettes[currentPalette];
+                if (!palette) return;
+
+                if (paletteIntro) {
+                    paletteIntro.innerHTML = `<h3>${palette.name}</h3><p>${palette.info}</p>`;
+                }
+
+                let html = '';
+                for (const [seriesKey, series] of Object.entries(palette.series)) {
+                    const seriesColors = series.colors.map(color => `
+                        <div class="color-card" data-hex="${color.hex}" data-name="${color.name}">
+                            <div class="color-card-swatch" style="background-color: ${color.hex}">
+                                <span class="color-card-name">${color.name}</span>
+                            </div>
+                            <div class="color-card-info">
+                                <span class="color-card-hex">${color.hex}</span>
+                            </div>
+                        </div>
+                    `).join('');
+
+                    html += `
+                        <div class="color-series-section" data-series="${seriesKey}">
+                            <div class="color-series-header" style="border-left-color: ${series.color}">
+                                <h4 class="color-series-title">${series.name}</h4>
+                                <span class="color-series-count">${series.colors.length} colors</span>
+                            </div>
+                            <div class="color-grid">${seriesColors}</div>
+                        </div>
+                    `;
+                }
+                colorSeries.innerHTML = html;
+            }
+
+            function setupEventListeners() {
+                const paletteList = document.getElementById('seriesNavList');
+                if (paletteList) {
+                    paletteList.addEventListener('click', (e) => {
+                        const item = e.target.closest('.palette-item');
+                        if (item) {
+                            currentPalette = item.dataset.palette;
+                            renderSidebarPalettes();
+                            renderColors();
+                        }
+                    });
+                }
+
+                const colorSeries = document.getElementById('color-series');
+                if (colorSeries) {
+                    colorSeries.addEventListener('click', (e) => {
+                        const card = e.target.closest('.color-card');
+                        if (card) {
+                            const hex = card.dataset.hex;
+                            copyToClipboard(hex);
+                            showToast('Copied: ' + hex);
+                        }
+                    });
+                }
+
+                const searchInput = document.getElementById('colorSearch');
+                if (searchInput) {
+                    searchInput.addEventListener('input', (e) => {
+                        const query = e.target.value.toLowerCase();
+                        const searchClear = document.getElementById('searchClear');
+                        if (searchClear) {
+                            searchClear.style.display = query ? 'block' : 'none';
+                        }
+                        filterColors(query);
+                    });
+                }
+
+                const searchClear = document.getElementById('searchClear');
+                if (searchClear) {
+                    searchClear.addEventListener('click', () => {
+                        const searchInput = document.getElementById('colorSearch');
+                        if (searchInput) {
+                            searchInput.value = '';
+                            searchClear.style.display = 'none';
+                            filterColors('');
+                        }
+                    });
+                }
+            }
+
+            function filterColors(query) {
+                const colorSeries = document.getElementById('color-series');
+                if (!colorSeries) return;
+
+                const sections = colorSeries.querySelectorAll('.color-series-section');
+                sections.forEach(section => {
+                    const cards = section.querySelectorAll('.color-card');
+                    let visibleCount = 0;
+                    cards.forEach(card => {
+                        const hex = card.dataset.hex.toLowerCase();
+                        const name = card.dataset.name.toLowerCase();
+                        const match = !query || hex.includes(query) || name.includes(query);
+                        card.style.display = match ? '' : 'none';
+                        if (match) visibleCount++;
+                    });
+                    section.style.display = visibleCount > 0 ? '' : 'none';
+                });
+            }
+
+            function copyToClipboard(text) {
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(text);
+                } else {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                }
+            }
+
+            function showToast(message) {
+                const toast = document.getElementById('toast');
+                if (toast) {
+                    toast.textContent = message;
+                    toast.classList.add('show');
+                    setTimeout(() => toast.classList.remove('show'), 2000);
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', init);
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拼豆王国 - 物料配件</title>
+    <meta name="description" content="拼豆制作所需的工具、材料和配件大全">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            --secondary-gradient: linear-gradient(135deg, #ff6b6b 0%, #ee5a9b 100%);
+            --bg-color: #f5f7fa;
+            --card-bg: #ffffff;
+            --text-dark: #2d3748;
+            --text-light: #718096;
+            --primary-color: #ff6b6b;
+            --border-radius: 16px;
+            --shadow: 0 4px 20px rgba(0,0,0,0.08);
+            --shadow-hover: 0 8px 30px rgba(0,0,0,0.12);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: var(--bg-color);
+            color: var(--text-dark);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 100px 24px 40px;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .page-header h1 {
+            font-size: 2.2rem;
+            color: #ff6b6b;
+            margin-bottom: 12px;
+        }
+
+        .page-header p {
+            color: var(--text-light);
+            font-size: 1rem;
+        }
+
+        .category-filter {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 25px;
+            background: var(--card-bg);
+            color: var(--text-light);
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .filter-btn:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+        }
+
+        .filter-btn.active {
+            background: var(--secondary-gradient);
+            color: #fff;
+        }
+
+        .materials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        .material-card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .material-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .material-image {
+            height: 140px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+        }
+
+        .material-content {
+            padding: 20px;
+        }
+
+        .material-category {
+            display: inline-block;
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+
+        .material-title {
+            font-size: 1.15rem;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .material-desc {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+
+        .material-price {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #ff6b6b;
+        }
+
+        .material-link {
+            display: block;
+            text-align: center;
+            padding: 12px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .material-link:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .footer {
+            background: var(--card-bg);
+            padding: 24px;
+            text-align: center;
+            margin-top: 60px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.03);
+        }
+
+        .footer-brand {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .footer p {
+            color: var(--text-light);
+            font-size: 0.85rem;
+        }
+
+        .starter-kits {
+            margin-top: 2rem;
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: var(--shadow);
+        }
+
+        .starter-kits h2 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #333;
+            font-size: 1.5rem;
+        }
+
+        .kits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .kit-card {
+            border: 2px solid #eee;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .kit-card:hover {
+            border-color: #ff6b6b;
+            transform: translateY(-3px);
+        }
+
+        .kit-card h3 {
+            color: #666;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .kit-price {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .kit-includes {
+            text-align: left;
+            margin-bottom: 1rem;
+        }
+
+        .kit-includes h4 {
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 0.5rem;
+        }
+
+        .kit-includes ul {
+            list-style: none;
+            padding: 0;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .kit-includes li {
+            padding: 4px 0;
+        }
+
+        .kit-includes li::before {
+            content: '✓ ';
+            color: #4ecdc4;
+        }
+
+        .kit-btn {
+            display: inline-block;
+            padding: 10px 28px;
+            background: var(--secondary-gradient);
+            color: #fff;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .kit-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .kit-card.recommended {
+            border-color: #ff6b6b;
+            background: linear-gradient(180deg, #fff 0%, #fff5f5 100%);
+        }
+
+        .kit-card.recommended .kit-price {
+            color: #ff6b6b;
+        }
+
+        @media (max-width: 768px) {
+            .menu-toggle {
+                display: flex;
+            }
+
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: var(--card-bg);
+                flex-direction: column;
+                padding: 16px;
+                box-shadow: var(--shadow);
+                gap: 4px;
+            }
+
+            .nav-links.active {
+                display: flex;
+            }
+
+            .nav-links a {
+                padding: 12px 16px;
+            }
+
+            .container {
+                padding: 80px 16px 24px;
+            }
+
+            .page-header h1 {
+                font-size: 1.8rem;
+            }
+
+            .filter-btn {
+                padding: 8px 18px;
+                font-size: 0.85rem;
+            }
+
+            .materials-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .kits-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .material-image {
+                height: 120px;
+                font-size: 3rem;
+            }
+
+            .material-content {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="index.html" class="brand-link">
+                    <img src="logo.svg" alt="拼豆王国" class="brand-icon">
+                    <span class="brand-text">拼豆王国</span>
+                </a>
+            </div>
+            <div class="nav-menu">
+                <a href="index.html" class="nav-link">首页</a>
+                <a href="index.html#generator" class="nav-link">生成器</a>
+                <a href="colors.html" class="nav-link">色卡</a>
+                <a href="about.html" class="nav-link">拼豆历史</a>
+                <a href="library.html" class="nav-link">素材库</a>
+            </div>
+            <button class="nav-toggle" id="navToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header fade-in">
+            <h1>🛠️ 拼豆物料配件大全</h1>
+            <p>制作拼豆所需的各类工具和材料</p>
+        </div>
+
+        <div class="category-filter fade-in">
+            <button class="filter-btn active" onclick="filterCategory('all')">全部</button>
+            <button class="filter-btn" onclick="filterCategory('tools')">工具配件</button>
+            <button class="filter-btn" onclick="filterCategory('beads')">拼豆材料</button>
+            <button class="filter-btn" onclick="filterCategory('boards')">模板豆板</button>
+            <button class="filter-btn" onclick="filterCategory('accessories')">成品配件</button>
+        </div>
+
+        <div class="materials-grid" id="materialsGrid">
+            <div class="material-card fade-in" data-category="tools">
+                <div class="material-image" style="background: #f8f8f8; padding: 10px;">
+                    <img src="images/iron.png" alt="专业级熨斗" style="width: 100%; height: auto; max-height: 80px; object-fit: contain;">
+                </div>
+                <div class="material-content">
+                    <span class="material-category">工具配件</span>
+                    <h3 class="material-title">专业级熨斗</h3>
+                    <p class="material-desc">温度可控，专为拼豆熨烫设计，确保豆子融合均匀不融化。</p>
+                    <div class="material-price">¥59-129</div>
+                </div>
+                <a href="#" class="material-link">查看详情 →</a>
+            </div>
+
+            <div class="material-card fade-in" data-category="tools">
+                <div class="material-image" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                    🧩
+                </div>
+                <div class="material-content">
+                    <span class="material-category">工具配件</span>
+                    <h3 class="material-title">拼豆镊子套装</h3>
+                    <p class="material-desc">弯头+直头双镊子，精细操作必备，防滑手柄设计更易掌控。</p>
+                    <div class="material-price">¥9.9-29.9</div>
+                </div>
+                <a href="#" class="material-link">查看详情 →</a>
+            </div>
+
+            <div class="material-card fade-in" data-category="tools">
+                <div class="material-image" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+                    📜
+                </div>
+                <div class="material-content">
+                    <span class="material-category">工具配件</span>
+                    <h3 class="material-title">助烫纸/助烫片</h3>
+                    <p class="material-desc">耐高温烘焙纸和透明助烫片两种可选，可反复使用，防止粘连。</p>
+                    <div class="material-price">¥5.9-19.9</div>
+                </div>
+                <a href="#" class="material-link">查看详情 →</a>
+            </div>
+
+            <div class="material-card fade-in" data-category="tools">
+                <div class="material-image" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">
+                    🧊
+                </div>
+                <div class="material-content">
+                    <span class="material-category">工具配件</span>
+                    <h3 class="material-title">冷却定型压板</h3>
+                    <p class="material-desc">熨烫后立即压制定型，防止成品翘曲变形，确保平整美观。</p>
+                    <div class="material-price">¥15.9-39.9</div>
+                </div>
+                <a href="#" class="material-link">查看详情 →</a>
+            </div>
+
+            <div class="material-card fade-in" data-category="beads">
+                <div class="material-image" style="background: linear-gradient(135deg, #fa709a, #fee140);">
+                    🌈
+                </div>
+                <div class="material-content">
+                    <span class="material-category">拼豆材料</span>
+                    <h3 class="material-title">Mard融合豆 221色</h3>
+                    <p class="material-desc">正品Mard融合豆，221色全套，色彩饱满均匀，融合效果好。</p>
+                    <div class="material-price">¥199-399</div>
+                </div>
+                <a href="#" class="material-link">查看详情 →</a>
+            </div>
+
+            <div class="material-card fade-in" data-category="beads">
+                <div class="material-image" style="background: linear-gradient(135deg, #a18cd1, #fbc2eb);">
+                    ✨
+                </div>
+                <div class="material-content">
+                    <span class="material-category">拼豆材料</span>
+                    <h3 class="material-title">夜光/荧光拼豆</h3>
+                    <p class="material-desc">夜光效果持久，荧光色鲜艳夺目，适合制作特殊效果的作品。</p>
+                    <div class="material-price">¥2.9-9.9/色</div>
+                </div>
+                <a href="#" class="material-link">查看详情 →</a>
+            </div>
+
+            <div class="material-card fade-in" data-category="beads">
+                <div class="material-image" style="background: linear-gradient(135deg, #ffecd2, #fcb69f);">
+                    ⚪
+                </div>
+                <div class="material-content">
+                    <span class="material-category">拼豆材料</span>
+                    <h3 class="material-title">单色补充装</h3>
+                    <p class="material-desc">高用量颜色补充装，黑白肤色等高消耗颜色建议多备。</p>
+                    <div class="material-price">¥1.9-5.9/包</div>
+                </div>
+                <a href="#" class="material-link">查看详情 →</a>
+            </div>
+
+            <div class="material-card fade-in" data-category="beads">
+                <div class="material-image" style="background: linear-gradient(135deg, #ff9a9e, #fecfef);">
+                    💎
+                </div>
+                <div class="material-content">
+                    <span class="material-category">拼豆材料</span>
+                    <h3 class="material-title">珠光/闪粉拼豆</h3>
+                    <p class="material-desc">表面带有珍珠光泽或闪粉效果，让作品更具质感和立体感。</p>
+                    <div class="material-price">¥3.9-12.9/色</div>
+                </div>
+                <a href="#" class="material-link">查看详情 →</a>
+            </div>
+
+            <div class="material-card fade-in" data-category="beads">
+                <div class="material-image" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                    🫘
+                </div>
+                <div class="material-content">
+                    <span class="material-category">拼豆材料</span>
+                    <h3 class="material-title">Mini小颗粒拼豆</h3>
+                    <p class="material-desc">2.6mm迷你尺寸，适合制作精细图案和小尺寸作品。</p>
+                    <div class="material-price">¥1.9-6.9/色</div>
+                </div>
+                <a href="#" class="material-link">查看详情 →</a>
+            </div>
+
+            <div class="material-card fade-in" data-category="boards">
+                <div class="material-image" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                    ⬜
+                </div>
+                <div class="material-content">
+                    <span class="material-category">模板豆板</span>
+                    <h3 class="material-title">5mm方形大方板</h3>
+                    <p class="material-desc">104×104钉超大方形模板，可拼接使用，适合大型作品制作。</p>
+                    <div class="material-price">¥15.9-29.9</div>
+                </div>
+                <a href="#" class="material-link">查看详情 →</a>
+            </div>
+
+            <div class="material-card fade-in" data-category="boards">
+                <div class="material-image" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                    ⭕
+                </div>
+                <div class="material-content">
+                    <span class="material-category">模板豆板</span>
+                    <h3 class="material-title">圆形/心形模板</h3>
+                    <p class="material-desc">特殊造型模板，适合徽章、挂件等作品，含多种尺寸可选。</p>
+                    <div class="material-price">¥9.9-25.9</div>
+                </div>
+                <a href="#" class="material-link">查看详情 →</a>
+            </div>
+
+            <div class="material-card fade-in" data-category="boards">
+                <div class="material-image" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+                    📐
+                </div>
+                <div class="material-content">
+                    <span class="material-category">模板豆板</span>
+                    <h3 class="material-title">带刻度透明板</h3>
+                    <p class="material-desc">透明设计可下放图纸对照，带刻度方便定位，新手友好。</p>
+                    <div class="material-price">¥12.9-35.9</div>
+                </div>
+                <a href="#" class="material-link">查看详情 →</a>
+            </div>
+
+            <div class="material-card fade-in" data-category="boards">
+                <div class="material-image" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+                    📐
+                </div>
+                <div class="material-content">
+                    <span class="material-category">模板豆板</span>
+                    <h3 class="material-title">方形基础模板</h3>
+                    <p class="material-desc">多种尺寸可选，正方形设计适合大多数基础图案制作。</p>
+                    <div class="material-price">¥8.9-25.9</div>
+                </div>
+                <a href="#" class="material-link">查看详情 →</a>
+            </div>
+
+            <div class="material-card fade-in" data-category="accessories">
+                <div class="material-image" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">
+                    🔑
+                </div>
+                <div class="material-content">
+                    <span class="material-category">成品配件</span>
+                    <h3 class="material-title">钥匙扣配件套装</h3>
+                    <p class="material-desc">D扣+龙虾扣+链条全套，多种颜色可选，让成品更精致。</p>
+                    <div class="material-price">¥6.9-19.9</div>
+                </div>
+                <a href="#" class="material-link">查看详情 →</a>
+            </div>
+
+            <div class="material-card fade-in" data-category="accessories">
+                <div class="material-image" style="background: linear-gradient(135deg, #fa709a, #fee140);">
+                    🧲
+                </div>
+                <div class="material-content">
+                    <span class="material-category">成品配件</span>
+                    <h3 class="material-title">冰箱贴磁铁</h3>
+                    <p class="material-desc">强力背胶软磁贴，让你的拼豆作品变身实用冰箱装饰。</p>
+                    <div class="material-price">¥3.9-12.9</div>
+                </div>
+                <a href="#" class="material-link">查看详情 →</a>
+            </div>
+
+            <div class="material-card fade-in" data-category="accessories">
+                <div class="material-image" style="background: linear-gradient(135deg, #a18cd1, #fbc2eb);">
+                    📦
+                </div>
+                <div class="material-content">
+                    <span class="material-category">成品配件</span>
+                    <h3 class="material-title">收纳分装盒</h3>
+                    <p class="material-desc">多格分类收纳盒，让你的豆子井井有条，防串色易查找。</p>
+                    <div class="material-price">¥12.9-49.9</div>
+                </div>
+                <a href="#" class="material-link">查看详情 →</a>
+            </div>
+        </div>
+
+        <div class="starter-kits fade-in">
+            <h2>🎁 新手入门套装推荐</h2>
+            <div class="kits-grid">
+                <div class="kit-card">
+                    <h3>体验装</h3>
+                    <div class="kit-price">¥39.9</div>
+                    <div class="kit-includes">
+                        <h4>包含内容：</h4>
+                        <ul>
+                            <li>30色基础拼豆</li>
+                            <li>1块方形模板板</li>
+                            <li>基础镊子1把</li>
+                            <li>助烫纸1张</li>
+                        </ul>
+                    </div>
+                    <a href="#" class="kit-btn">立即购买</a>
+                </div>
+
+                <div class="kit-card recommended">
+                    <h3>入门推荐装</h3>
+                    <div class="kit-price">¥89.9</div>
+                    <div class="kit-includes">
+                        <h4>包含内容：</h4>
+                        <ul>
+                            <li>60色精选拼豆</li>
+                            <li>2块方形模板板</li>
+                            <li>专业镊子套装</li>
+                            <li>助烫纸+助烫片</li>
+                            <li>熨斗温度参考卡</li>
+                        </ul>
+                    </div>
+                    <a href="#" class="kit-btn">立即购买</a>
+                </div>
+
+                <div class="kit-card">
+                    <h3>专业套装</h3>
+                    <div class="kit-price">¥299</div>
+                    <div class="kit-includes">
+                        <h4>包含内容：</h4>
+                        <ul>
+                            <li>221色Mard全套</li>
+                            <li>多种形状模板板</li>
+                            <li>专业熨斗一台</li>
+                            <li>全套工具套装</li>
+                            <li>冷却压板+收纳盒</li>
+                            <li>入门教程视频</li>
+                        </ul>
+                    </div>
+                    <a href="#" class="kit-btn">立即购买</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-brand">
+            <span class="logo-icon">🎨</span>
+            <span>拼豆王国</span>
+        </div>
+        <p>© 2025 拼豆王国 | 使用时请确保图片版权合规</p>
+    </footer>
+
+    <script>
+        function filterCategory(category) {
+            const cards = document.querySelectorAll('.material-card');
+            const buttons = document.querySelectorAll('.filter-btn');
+            
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            cards.forEach(card => {
+                if (category === 'all' || card.dataset.category === category) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const menuToggle = document.getElementById('menuToggle');
+            const navLinks = document.getElementById('navLinks');
+            
+            if (menuToggle && navLinks) {
+                menuToggle.addEventListener('click', () => {
+                    navLinks.classList.toggle('active');
+                });
+            }
+        });
+    </script>
+</body>
+</html>
