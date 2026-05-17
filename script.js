@@ -867,12 +867,10 @@ class PixelArtGenerator {
         this.cropCanvas = document.getElementById('cropCanvas');
         this.cropCtx = this.cropCanvas ? this.cropCanvas.getContext('2d') : null;
         this.cropPreviewImage = null;
+        this.selectCropBtn = document.getElementById('selectCropBtn');
         this.confirmCropBtn = document.getElementById('confirmCropBtn');
         this.cancelCropBtn = document.getElementById('cancelCropBtn');
-        this.freeRatioBtn = document.getElementById('freeRatioBtn');
-        this.squareRatioBtn = document.getElementById('squareRatioBtn');
-        this.fourThreeRatioBtn = document.getElementById('fourThreeRatioBtn');
-        this.sixteenNineRatioBtn = document.getElementById('sixteenNineRatioBtn');
+        this.cropFrameVisible = false; // 裁剪框是否显示
     }
 
     setupEventListeners() {
@@ -931,11 +929,8 @@ class PixelArtGenerator {
         }
 
         // 裁剪相关事件
-        if (this.cropCanvas) {
-            this.cropCanvas.addEventListener('pointerdown', (e) => this.handleCropMouseDown(e));
-            this.cropCanvas.addEventListener('pointermove', (e) => this.handleCropMouseMove(e));
-            this.cropCanvas.addEventListener('pointerup', () => this.handleCropMouseUp());
-            this.cropCanvas.addEventListener('pointerleave', () => this.handleCropMouseUp());
+        if (this.selectCropBtn) {
+            this.selectCropBtn.addEventListener('click', () => this.showCropFrame());
         }
 
         if (this.confirmCropBtn) {
@@ -944,19 +939,6 @@ class PixelArtGenerator {
 
         if (this.cancelCropBtn) {
             this.cancelCropBtn.addEventListener('click', () => this.cancelCrop());
-        }
-
-        if (this.freeRatioBtn) {
-            this.freeRatioBtn.addEventListener('click', () => this.setCropRatio('free'));
-        }
-        if (this.squareRatioBtn) {
-            this.squareRatioBtn.addEventListener('click', () => this.setCropRatio('1:1'));
-        }
-        if (this.fourThreeRatioBtn) {
-            this.fourThreeRatioBtn.addEventListener('click', () => this.setCropRatio('4:3'));
-        }
-        if (this.sixteenNineRatioBtn) {
-            this.sixteenNineRatioBtn.addEventListener('click', () => this.setCropRatio('16:9'));
         }
 
         if (this.colorCountSlider && this.paletteSelect) {
@@ -1035,16 +1017,43 @@ class PixelArtGenerator {
         this.cropCanvas.height = height;
         this.cropCtx.drawImage(this.cropPreviewImage, 0, 0, width, height);
         
-        this.cropArea = {
-            x: Math.max(0, Math.floor((width - 200) / 2)),
-            y: Math.max(0, Math.floor((height - 200) / 2)),
-            width: Math.min(200, width),
-            height: Math.min(200, height)
-        };
+        // 默认不显示裁剪框
+        this.cropFrameVisible = false;
         
         if (this.cropSection) {
             this.cropSection.style.display = 'block';
         }
+        
+        this.drawCropOverlay();
+    }
+
+    // 显示裁剪框
+    showCropFrame() {
+        if (!this.cropCanvas || !this.cropPreviewImage) return;
+        
+        const { width, height } = this.cropCanvas;
+        
+        // 初始化裁剪区域（画布中央，初始大小为画布的1/3）
+        const initSize = Math.min(width, height) / 3;
+        this.cropArea = {
+            x: Math.floor((width - initSize) / 2),
+            y: Math.floor((height - initSize) / 2),
+            width: initSize,
+            height: initSize
+        };
+        
+        this.cropFrameVisible = true;
+        
+        // 显示确认和取消按钮，隐藏选择裁剪按钮
+        if (this.selectCropBtn) this.selectCropBtn.style.display = 'none';
+        if (this.confirmCropBtn) this.confirmCropBtn.style.display = 'inline-block';
+        if (this.cancelCropBtn) this.cancelCropBtn.style.display = 'inline-block';
+        
+        // 添加画布事件监听
+        this.cropCanvas.addEventListener('pointerdown', (e) => this.handleCropMouseDown(e));
+        this.cropCanvas.addEventListener('pointermove', (e) => this.handleCropMouseMove(e));
+        this.cropCanvas.addEventListener('pointerup', () => this.handleCropMouseUp());
+        this.cropCanvas.addEventListener('pointerleave', () => this.handleCropMouseUp());
         
         this.drawCropOverlay();
     }
@@ -1055,6 +1064,9 @@ class PixelArtGenerator {
         const { width, height } = this.cropCanvas;
         
         this.cropCtx.drawImage(this.cropPreviewImage, 0, 0, width, height);
+        
+        // 只有在裁剪框可见时才绘制遮罩和裁剪框
+        if (!this.cropFrameVisible) return;
         
         this.cropCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
         this.cropCtx.fillRect(0, 0, width, height);
@@ -1104,16 +1116,49 @@ class PixelArtGenerator {
                 handleSize
             );
         }
+        
+        // 添加边缘控制点
+        this.cropCtx.fillStyle = 'rgba(102, 126, 234, 0.7)';
+        const edgeHandleSize = 6;
+        // 上边中点
+        this.cropCtx.fillRect(
+            this.cropArea.x + this.cropArea.width / 2 - edgeHandleSize / 2,
+            this.cropArea.y - edgeHandleSize / 2,
+            edgeHandleSize,
+            edgeHandleSize
+        );
+        // 下边中点
+        this.cropCtx.fillRect(
+            this.cropArea.x + this.cropArea.width / 2 - edgeHandleSize / 2,
+            this.cropArea.y + this.cropArea.height - edgeHandleSize / 2,
+            edgeHandleSize,
+            edgeHandleSize
+        );
+        // 左边中点
+        this.cropCtx.fillRect(
+            this.cropArea.x - edgeHandleSize / 2,
+            this.cropArea.y + this.cropArea.height / 2 - edgeHandleSize / 2,
+            edgeHandleSize,
+            edgeHandleSize
+        );
+        // 右边中点
+        this.cropCtx.fillRect(
+            this.cropArea.x + this.cropArea.width - edgeHandleSize / 2,
+            this.cropArea.y + this.cropArea.height / 2 - edgeHandleSize / 2,
+            edgeHandleSize,
+            edgeHandleSize
+        );
     }
 
     handleCropMouseDown(e) {
-        if (!this.cropCanvas || !this.cropPreviewImage) return;
+        if (!this.cropCanvas || !this.cropPreviewImage || !this.cropFrameVisible) return;
         
         const rect = this.cropCanvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         
         const handleSize = 14;
+        // 四角控制点
         const handles = [
             { x: this.cropArea.x, y: this.cropArea.y, type: 'nw', cursor: 'nwse-resize' },
             { x: this.cropArea.x + this.cropArea.width, y: this.cropArea.y, type: 'ne', cursor: 'nesw-resize' },
@@ -1121,6 +1166,7 @@ class PixelArtGenerator {
             { x: this.cropArea.x + this.cropArea.width, y: this.cropArea.y + this.cropArea.height, type: 'se', cursor: 'nwse-resize' }
         ];
         
+        // 检查四角控制点
         for (const handle of handles) {
             if (
                 x >= handle.x - handleSize &&
@@ -1136,6 +1182,45 @@ class PixelArtGenerator {
             }
         }
         
+        // 检查边缘控制点
+        const edgeSize = 14;
+        const midX = this.cropArea.x + this.cropArea.width / 2;
+        const midY = this.cropArea.y + this.cropArea.height / 2;
+        
+        // 上边
+        if (Math.abs(x - midX) < edgeSize && Math.abs(y - this.cropArea.y) < edgeSize) {
+            this.resizeHandle = 'n';
+            this.cropStart = { x, y };
+            this.cropCanvas.style.cursor = 'ns-resize';
+            this.cropCanvas.setPointerCapture(e.pointerId);
+            return;
+        }
+        // 下边
+        if (Math.abs(x - midX) < edgeSize && Math.abs(y - (this.cropArea.y + this.cropArea.height)) < edgeSize) {
+            this.resizeHandle = 's';
+            this.cropStart = { x, y };
+            this.cropCanvas.style.cursor = 'ns-resize';
+            this.cropCanvas.setPointerCapture(e.pointerId);
+            return;
+        }
+        // 左边
+        if (Math.abs(x - this.cropArea.x) < edgeSize && Math.abs(y - midY) < edgeSize) {
+            this.resizeHandle = 'w';
+            this.cropStart = { x, y };
+            this.cropCanvas.style.cursor = 'ew-resize';
+            this.cropCanvas.setPointerCapture(e.pointerId);
+            return;
+        }
+        // 右边
+        if (Math.abs(x - (this.cropArea.x + this.cropArea.width)) < edgeSize && Math.abs(y - midY) < edgeSize) {
+            this.resizeHandle = 'e';
+            this.cropStart = { x, y };
+            this.cropCanvas.style.cursor = 'ew-resize';
+            this.cropCanvas.setPointerCapture(e.pointerId);
+            return;
+        }
+        
+        // 检查是否在裁剪区域内（拖动）
         if (
             x >= this.cropArea.x &&
             x <= this.cropArea.x + this.cropArea.width &&
@@ -1150,7 +1235,7 @@ class PixelArtGenerator {
     }
 
     handleCropMouseMove(e) {
-        if (!this.cropCanvas || !this.cropPreviewImage) return;
+        if (!this.cropCanvas || !this.cropPreviewImage || !this.cropFrameVisible) return;
         
         const rect = this.cropCanvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
@@ -1162,6 +1247,7 @@ class PixelArtGenerator {
             this.dragCropArea(x, y);
         } else {
             const handleSize = 14;
+            // 四角控制点
             const handles = [
                 { x: this.cropArea.x, y: this.cropArea.y, type: 'nw', cursor: 'nwse-resize' },
                 { x: this.cropArea.x + this.cropArea.width, y: this.cropArea.y, type: 'ne', cursor: 'nesw-resize' },
@@ -1183,6 +1269,34 @@ class PixelArtGenerator {
                 }
             }
             
+            // 边缘控制点
+            if (!onHandle) {
+                const edgeSize = 14;
+                const midX = this.cropArea.x + this.cropArea.width / 2;
+                const midY = this.cropArea.y + this.cropArea.height / 2;
+                
+                // 上边
+                if (Math.abs(x - midX) < edgeSize && Math.abs(y - this.cropArea.y) < edgeSize) {
+                    this.cropCanvas.style.cursor = 'ns-resize';
+                    onHandle = true;
+                }
+                // 下边
+                else if (Math.abs(x - midX) < edgeSize && Math.abs(y - (this.cropArea.y + this.cropArea.height)) < edgeSize) {
+                    this.cropCanvas.style.cursor = 'ns-resize';
+                    onHandle = true;
+                }
+                // 左边
+                else if (Math.abs(x - this.cropArea.x) < edgeSize && Math.abs(y - midY) < edgeSize) {
+                    this.cropCanvas.style.cursor = 'ew-resize';
+                    onHandle = true;
+                }
+                // 右边
+                else if (Math.abs(x - (this.cropArea.x + this.cropArea.width)) < edgeSize && Math.abs(y - midY) < edgeSize) {
+                    this.cropCanvas.style.cursor = 'ew-resize';
+                    onHandle = true;
+                }
+            }
+            
             if (!onHandle && 
                 x >= this.cropArea.x &&
                 x <= this.cropArea.x + this.cropArea.width &&
@@ -1191,7 +1305,7 @@ class PixelArtGenerator {
             ) {
                 this.cropCanvas.style.cursor = 'move';
             } else if (!onHandle) {
-                this.cropCanvas.style.cursor = 'crosshair';
+                this.cropCanvas.style.cursor = 'default';
             }
         }
         
@@ -1201,8 +1315,8 @@ class PixelArtGenerator {
     handleCropMouseUp() {
         this.resizeHandle = null;
         this.dragging = false;
-        if (this.cropCanvas) {
-            this.cropCanvas.style.cursor = 'crosshair';
+        if (this.cropCanvas && this.cropFrameVisible) {
+            this.cropCanvas.style.cursor = 'default';
         }
     }
 
@@ -1246,6 +1360,32 @@ class PixelArtGenerator {
                 if (seWidth >= minSize && seHeight >= minSize) {
                     this.cropArea.width = seWidth;
                     this.cropArea.height = seHeight;
+                }
+                break;
+            case 'n':
+                const nHeight = this.cropArea.height - dy;
+                if (nHeight >= minSize) {
+                    this.cropArea.height = nHeight;
+                    this.cropArea.y += dy;
+                }
+                break;
+            case 's':
+                const sHeight = this.cropArea.height + dy;
+                if (sHeight >= minSize) {
+                    this.cropArea.height = sHeight;
+                }
+                break;
+            case 'w':
+                const wWidth = this.cropArea.width - dx;
+                if (wWidth >= minSize) {
+                    this.cropArea.width = wWidth;
+                    this.cropArea.x += dx;
+                }
+                break;
+            case 'e':
+                const eWidth = this.cropArea.width + dx;
+                if (eWidth >= minSize) {
+                    this.cropArea.width = eWidth;
                 }
                 break;
         }
@@ -1305,7 +1445,7 @@ class PixelArtGenerator {
     }
 
     confirmCrop() {
-        if (!this.cropPreviewImage || !this.cropCanvas) return;
+        if (!this.cropPreviewImage || !this.cropCanvas || !this.cropFrameVisible) return;
         
         const scaleX = this.cropPreviewImage.naturalWidth / this.cropCanvas.width;
         const scaleY = this.cropPreviewImage.naturalHeight / this.cropCanvas.height;
@@ -1335,15 +1475,22 @@ class PixelArtGenerator {
         };
         croppedImage.src = croppedCanvas.toDataURL();
         
-        if (this.cropSection) {
-            this.cropSection.style.display = 'none';
-        }
+        this.hideCropUI();
     }
 
     cancelCrop() {
-        if (this.cropSection) {
-            this.cropSection.style.display = 'none';
+        this.hideCropUI();
+        // 重绘纯图片
+        if (this.cropCanvas && this.cropPreviewImage) {
+            this.drawCropOverlay();
         }
+    }
+    
+    hideCropUI() {
+        this.cropFrameVisible = false;
+        if (this.selectCropBtn) this.selectCropBtn.style.display = 'inline-block';
+        if (this.confirmCropBtn) this.confirmCropBtn.style.display = 'none';
+        if (this.cancelCropBtn) this.cancelCropBtn.style.display = 'none';
     }
 
     getGridSize() {
