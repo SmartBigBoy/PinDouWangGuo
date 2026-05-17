@@ -1721,7 +1721,7 @@ class PixelArtGenerator {
         const mainHeight = dataHeight * mainPixelSize;
 
         const legendItemHeight = mainPixelSize;
-        const perColumnCount = Math.floor(mainHeight / mainPixelSize);
+        const perColumnCount = Math.floor(mainHeight / (mainPixelSize * 2)); // 每个颜色占两行格子高度
         const legendColumns = Math.ceil(usedColors.length / perColumnCount);
         const legendFontSize = Math.max(8, mainPixelSize * 0.35);
         const legendColWidth = Math.max(120, legendFontSize * 10 + 30);
