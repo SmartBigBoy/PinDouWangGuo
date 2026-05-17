@@ -867,9 +867,11 @@ class PixelArtGenerator {
         this.cropCanvas = document.getElementById('cropCanvas');
         this.cropCtx = this.cropCanvas ? this.cropCanvas.getContext('2d') : null;
         this.cropPreviewImage = null;
+        this.originalCropImage = null; // 保存原始图片用于恢复
         this.selectCropBtn = document.getElementById('selectCropBtn');
         this.confirmCropBtn = document.getElementById('confirmCropBtn');
         this.cancelCropBtn = document.getElementById('cancelCropBtn');
+        this.resetCropBtn = document.getElementById('resetCropBtn');
         this.cropFrameVisible = false; // 裁剪框是否显示
     }
 
@@ -939,6 +941,10 @@ class PixelArtGenerator {
 
         if (this.cancelCropBtn) {
             this.cancelCropBtn.addEventListener('click', () => this.cancelCrop());
+        }
+
+        if (this.resetCropBtn) {
+            this.resetCropBtn.addEventListener('click', () => this.resetCrop());
         }
 
         if (this.colorCountSlider && this.paletteSelect) {
@@ -1017,12 +1023,21 @@ class PixelArtGenerator {
         this.cropCanvas.height = height;
         this.cropCtx.drawImage(this.cropPreviewImage, 0, 0, width, height);
         
+        // 保存原始图片用于恢复
+        this.originalCropImage = this.cropPreviewImage;
+        
         // 默认不显示裁剪框
         this.cropFrameVisible = false;
         
         if (this.cropSection) {
             this.cropSection.style.display = 'block';
         }
+        
+        // 重置按钮状态
+        if (this.selectCropBtn) this.selectCropBtn.style.display = 'inline-block';
+        if (this.confirmCropBtn) this.confirmCropBtn.style.display = 'none';
+        if (this.cancelCropBtn) this.cancelCropBtn.style.display = 'none';
+        if (this.resetCropBtn) this.resetCropBtn.style.display = 'none';
         
         this.drawCropOverlay();
     }
@@ -1048,12 +1063,23 @@ class PixelArtGenerator {
         if (this.selectCropBtn) this.selectCropBtn.style.display = 'none';
         if (this.confirmCropBtn) this.confirmCropBtn.style.display = 'inline-block';
         if (this.cancelCropBtn) this.cancelCropBtn.style.display = 'inline-block';
+        if (this.resetCropBtn) this.resetCropBtn.style.display = 'none';
         
-        // 添加画布事件监听
-        this.cropCanvas.addEventListener('pointerdown', (e) => this.handleCropMouseDown(e));
-        this.cropCanvas.addEventListener('pointermove', (e) => this.handleCropMouseMove(e));
-        this.cropCanvas.addEventListener('pointerup', () => this.handleCropMouseUp());
-        this.cropCanvas.addEventListener('pointerleave', () => this.handleCropMouseUp());
+        // 移除旧的事件监听器再重新添加，避免重复绑定
+        this.cropCanvas.removeEventListener('pointerdown', this.handleCropMouseDown);
+        this.cropCanvas.removeEventListener('pointermove', this.handleCropMouseMove);
+        this.cropCanvas.removeEventListener('pointerup', this.handleCropMouseUp);
+        this.cropCanvas.removeEventListener('pointerleave', this.handleCropMouseUp);
+        
+        // 绑定事件
+        this.handleCropMouseDown = (e) => this.onCropMouseDown(e);
+        this.handleCropMouseMove = (e) => this.onCropMouseMove(e);
+        this.handleCropMouseUp = () => this.onCropMouseUp();
+        
+        this.cropCanvas.addEventListener('pointerdown', this.handleCropMouseDown);
+        this.cropCanvas.addEventListener('pointermove', this.handleCropMouseMove);
+        this.cropCanvas.addEventListener('pointerup', this.handleCropMouseUp);
+        this.cropCanvas.addEventListener('pointerleave', this.handleCropMouseUp);
         
         this.drawCropOverlay();
     }
@@ -1150,9 +1176,10 @@ class PixelArtGenerator {
         );
     }
 
-    handleCropMouseDown(e) {
+    onCropMouseDown(e) {
         if (!this.cropCanvas || !this.cropPreviewImage || !this.cropFrameVisible) return;
         
+        e.preventDefault();
         const rect = this.cropCanvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
@@ -1234,7 +1261,7 @@ class PixelArtGenerator {
         }
     }
 
-    handleCropMouseMove(e) {
+    onCropMouseMove(e) {
         if (!this.cropCanvas || !this.cropPreviewImage || !this.cropFrameVisible) return;
         
         const rect = this.cropCanvas.getBoundingClientRect();
@@ -1312,7 +1339,7 @@ class PixelArtGenerator {
         this.drawCropOverlay();
     }
 
-    handleCropMouseUp() {
+    onCropMouseUp() {
         this.resizeHandle = null;
         this.dragging = false;
         if (this.cropCanvas && this.cropFrameVisible) {
@@ -1472,6 +1499,8 @@ class PixelArtGenerator {
             this.cropPreviewImage = croppedImage;
             this.showOriginalImage(croppedCanvas.toDataURL());
             this.initCropPreview();
+            // 确认裁剪后显示恢复原图按钮
+            if (this.resetCropBtn) this.resetCropBtn.style.display = 'inline-block';
         };
         croppedImage.src = croppedCanvas.toDataURL();
         
@@ -1491,6 +1520,42 @@ class PixelArtGenerator {
         if (this.selectCropBtn) this.selectCropBtn.style.display = 'inline-block';
         if (this.confirmCropBtn) this.confirmCropBtn.style.display = 'none';
         if (this.cancelCropBtn) this.cancelCropBtn.style.display = 'none';
+        if (this.resetCropBtn) this.resetCropBtn.style.display = 'none';
+    }
+    
+    // 恢复原图
+    resetCrop() {
+        if (!this.originalCropImage || !this.cropCanvas) return;
+        
+        // 恢复原始图片
+        this.originalImage = this.originalCropImage;
+        this.cropPreviewImage = this.originalCropImage;
+        
+        // 重新绘制
+        const maxWidth = 600;
+        const maxHeight = 400;
+        let { width, height } = this.originalCropImage;
+        
+        if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+        }
+        if (height > maxHeight) {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+        }
+        
+        this.cropCanvas.width = width;
+        this.cropCanvas.height = height;
+        this.cropCtx.drawImage(this.originalCropImage, 0, 0, width, height);
+        
+        // 重置按钮状态
+        this.hideCropUI();
+        
+        // 更新原图显示
+        if (this.originalImageContainer) {
+            this.showOriginalImage(this.originalImage.src);
+        }
     }
 
     getGridSize() {
