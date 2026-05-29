@@ -7,10 +7,9 @@
 /* 素材库轮播样式 */
 .library-carousel {
     position: relative;
-    height: 200px;
+    height: 160px;
     overflow: hidden;
     background: #f5f5f5;
-    border-radius: 12px 12px 0 0;
 }
 
 .carousel-track {
