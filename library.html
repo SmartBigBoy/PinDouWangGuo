@@ -641,46 +641,37 @@
             </div>
 
             <div class="library-card fade-in" data-category="other">
-                <div class="library-preview other-preview" style="background: #f5f5f5; cursor: zoom-in;" onclick="openLightbox('images/library/muscle_man_1.png', '其他 - 肌肉男1')">
+                <div class="library-carousel" id="muscleManCarousel">
+                    <div class="carousel-track" id="muscleManTrack">
+                        <div class="carousel-slide" onclick="openLightbox('images/library/muscle_man_1.png', '其他 - 肌肉男 (1/2)')">
+                            <img src="images/library/muscle_man_1.png" alt="肌肉男1">
+                            <div class="carousel-indicator active"></div>
+                        </div>
+                        <div class="carousel-slide" onclick="openLightbox('images/library/muscle_man_2.png', '其他 - 肌肉男 (2/2)')">
+                            <img src="images/library/muscle_man_2.png" alt="肌肉男2">
+                            <div class="carousel-indicator"></div>
+                        </div>
+                    </div>
+                    <button class="carousel-btn carousel-prev" onclick="event.stopPropagation(); moveCarousel('muscleMan', -1)">‹</button>
+                    <button class="carousel-btn carousel-next" onclick="event.stopPropagation(); moveCarousel('muscleMan', 1)">›</button>
                     <span class="library-badge">免费</span>
-                    <img src="images/library/muscle_man_1.png" alt="肌肉男1">
                 </div>
                 <div class="library-info">
-                    <h3 class="library-title">其他 - 肌肉男1</h3>
+                    <h3 class="library-title">其他 - 肌肉男</h3>
                     <div class="library-meta">
                         <span class="library-category">📦 其他</span>
-                        <span>1个素材</span>
+                        <span>2个素材</span>
                     </div>
                     <div class="library-stats">
                         <span>📐 58×58</span>
                         <span>⬜ 方形</span>
                     </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadImage('images/library/muscle_man_1.png', '肌肉男1.png')" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: linear-gradient(135deg, #ff6b6b, #ee5a9b); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; text-align: center; cursor: pointer; border: none;">
-                        📥 下载素材
+                    <button class="download-btn" onclick="event.stopPropagation(); downloadMultipleImages(['images/library/muscle_man_1.png', 'images/library/muscle_man_2.png'], ['肌肉男1.png', '肌肉男2.png'])" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: linear-gradient(135deg, #ff6b6b, #ee5a9b); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; text-align: center; cursor: pointer; border: none;">
+                        📥 下载全部素材
                     </button>
                 </div>
             </div>
 
-            <div class="library-card fade-in" data-category="other">
-                <div class="library-preview other-preview" style="background: #f5f5f5; cursor: zoom-in;" onclick="openLightbox('images/library/muscle_man_2.png', '其他 - 肌肉男2')">
-                    <span class="library-badge">免费</span>
-                    <img src="images/library/muscle_man_2.png" alt="肌肉男2">
-                </div>
-                <div class="library-info">
-                    <h3 class="library-title">其他 - 肌肉男2</h3>
-                    <div class="library-meta">
-                        <span class="library-category">📦 其他</span>
-                        <span>1个素材</span>
-                    </div>
-                    <div class="library-stats">
-                        <span>📐 58×58</span>
-                        <span>⬜ 方形</span>
-                    </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadImage('images/library/muscle_man_2.png', '肌肉男2.png')" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: linear-gradient(135deg, #ff6b6b, #ee5a9b); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; text-align: center; cursor: pointer; border: none;">
-                        📥 下载素材
-                    </button>
-                </div>
-            </div>
         </div>
 
         <div class="fade-in" style="margin-top: 2rem; background: var(--card-bg); border-radius: var(--border-radius); padding: 2rem; box-shadow: var(--shadow);">
@@ -771,6 +762,39 @@
                 });
         }
 
+        function downloadMultipleImages(urls, filenames) {
+            if (urls.length === 0) return;
+            
+            let completed = 0;
+            urls.forEach((url, index) => {
+                downloadImage(url, filenames[index]);
+                completed++;
+            });
+        }
+
+        let carouselStates = {};
+
+        function moveCarousel(name, direction) {
+            const track = document.getElementById(name + 'Track');
+            const slides = track.querySelectorAll('.carousel-slide');
+            const indicators = track.querySelectorAll('.carousel-indicator');
+            
+            if (!carouselStates[name]) carouselStates[name] = 0;
+            
+            let currentIndex = carouselStates[name];
+            let newIndex = currentIndex + direction;
+            
+            if (newIndex < 0) newIndex = slides.length - 1;
+            if (newIndex >= slides.length) newIndex = 0;
+            
+            carouselStates[name] = newIndex;
+            track.style.transform = `translateX(-${newIndex * 100}%)`;
+            
+            indicators.forEach((ind, i) => {
+                ind.classList.toggle('active', i === newIndex);
+            });
+        }
+
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeLightbox();
@@ -800,6 +824,29 @@
                 menuToggle.addEventListener('click', () => {
                     navLinks.classList.toggle('active');
                 });
+            }
+
+            // 触摸滑动支持
+            const carousel = document.getElementById('muscleManCarousel');
+            if (carousel) {
+                let startX = 0;
+                let endX = 0;
+                
+                carousel.addEventListener('touchstart', (e) => {
+                    startX = e.touches[0].clientX;
+                }, { passive: true });
+                
+                carousel.addEventListener('touchend', (e) => {
+                    endX = e.changedTouches[0].clientX;
+                    const diff = startX - endX;
+                    if (Math.abs(diff) > 50) {
+                        if (diff > 0) {
+                            moveCarousel('muscleMan', 1);
+                        } else {
+                            moveCarousel('muscleMan', -1);
+                        }
+                    }
+                }, { passive: true });
             }
         });
     </script>
