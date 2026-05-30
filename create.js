@@ -80,6 +80,11 @@ class PixelEditor {
   }
 
   setupEventListeners() {
+    // 手机端自动折叠导入和统计
+    if (window.innerWidth < 640) {
+      if (this.importHeader) { this.importHeader.classList.add("collapsed-mobile"); this.importBody.classList.add("collapsed-mobile"); }
+      if (this.statsHeader) { this.statsHeader.classList.add("collapsed-mobile"); this.statsBody.classList.add("collapsed-mobile"); }
+    }
     // 网格尺寸
     this.gridSizeSelect.addEventListener('change', () => {
       const val = this.gridSizeSelect.value;

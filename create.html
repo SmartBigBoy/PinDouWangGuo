@@ -285,6 +285,8 @@
 
         /* ===== 响应式: 手机 ===== */
         @media (max-width: 640px) {
+            .collapse-body.collapsed-mobile { max-height: 0; }
+            .collapse-header.collapsed-mobile::after { transform: rotate(-90deg); }
             .create-wrapper { margin-top: 50px; min-height: calc(100vh - 50px); }
             .create-sidebar { max-height: 40vh; }
             .sidebar-scroll { padding: 8px 10px; }
