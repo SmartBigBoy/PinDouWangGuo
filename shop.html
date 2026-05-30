@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>拼豆购物 - 材料工具推荐 | 拼豆王国</title>
+    <meta name="description" content="拼豆材料、工具、配件购买推荐，精选优质拼豆商品。">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://pindou.skin/shop.html">
+    <link rel="shortcut icon" href="logo.svg" type="image/svg+xml">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="拼豆购物 - 材料工具推荐">
+    <meta property="og:description" content="拼豆材料工具购买推荐，精选优质商品。">
+    <meta property="og:url" content="https://pindou.skin/shop.html">
+    <meta property="og:image" content="https://pindou.skin/images/og-preview.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:image" content="https://pindou.skin/images/og-preview.png">
+    <link rel="stylesheet" href="style.css">
+    <div id="analytics-placeholder"></div>
+    <style>
+        .shop-page .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 100px 20px 40px;
+        }
+        .shop-page .page-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .shop-page .page-header h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            background: var(--bg-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+        .shop-page .page-header p {
+            color: var(--text-light);
+            font-size: 1rem;
+        }
+        .shop-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+        }
+        .shop-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            transition: all 0.3s ease;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+        .shop-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        }
+        .shop-card-image {
+            height: 180px;
+            background: linear-gradient(135deg, #667eea20, #764ba220);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .shop-badge {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a9b);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .shop-coupon {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #ff6b6b;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+        .shop-card-body {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .shop-card-body h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            line-height: 1.5;
+            margin-bottom: 12px;
+            flex: 1;
+        }
+        .shop-price-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .shop-price {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #ff6b6b;
+        }
+        .shop-price-original {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-decoration: line-through;
+        }
+        .shop-btn {
+            display: block;
+            text-align: center;
+            padding: 12px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a9b);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+        .shop-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255,107,107,0.35);
+        }
+        .shop-btn::after {
+            content: ' →';
+        }
+        .shop-footer {
+            text-align: center;
+            margin-top: 40px;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            line-height: 1.8;
+        }
+        @media (max-width: 640px) {
+            .shop-page .container { padding: 80px 14px 30px; }
+            .shop-page .page-header h1 { font-size: 1.5rem; }
+            .shop-grid { grid-template-columns: 1fr; }
+            .shop-card-image { height: 150px; font-size: 3rem; }
+            .shop-card-body { padding: 16px; }
+            .shop-card-body h3 { font-size: 0.9rem; }
+            .shop-price { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body class="shop-page">
+    <div id="navbar-placeholder"></div>
+
+    <div class="container">
+        <div class="page-header fade-in">
+            <h1>🛒 拼豆好物推荐</h1>
+            <p>精选优质拼豆材料工具，淘宝好价直达</p>
+        </div>
+
+        <div class="shop-grid" id="shopGrid">
+            <!-- 商品卡片由 JS 动态渲染 -->
+        </div>
+
+        <div class="shop-footer">
+            <p>💡 以上链接为淘宝推广链接，价格仅供参考，实际以商品页为准</p>
+            <p>本站不直接销售商品，仅提供购买参考</p>
+        </div>
+    </div>
+
+    <div id="footer-placeholder"></div>
+
+    <script>
+        const products = [
+            {
+                name: '265色拼豆补充包211色全套装全色系MARD同款融合材料diy益智玩具',
+                badge: '历史热推',
+                coupon: '5元',
+                price: '97.90',
+                originalPrice: '102.90',
+                image: 'images/shop-mard-265.jpg',
+                url: 'https://s.click.taobao.com/xydIQMl'
+            },
+            {
+                name: '按压自动点珠拼豆笔手diy套装全套具用神器充材料包玩具',
+                badge: '同类高佣',
+                coupon: '',
+                price: '8.42',
+                originalPrice: '',
+                image: 'images/shop-bead-pen.jpg',
+                url: 'https://s.click.taobao.com/Os02QMl'
+            }
+        ];
+
+        // 更多商品可在此添加 ↑
+
+        function renderProducts() {
+            const grid = document.getElementById('shopGrid');
+            grid.innerHTML = products.map(p => `
+                <div class="shop-card fade-in">
+                    <div class="shop-card-image">
+                        ${p.badge ? `<span class="shop-badge">🔥 ${p.badge}</span>` : ''}
+                        ${p.coupon ? `<span class="shop-coupon">券¥${p.coupon}</span>` : ''}
+                        ${p.image.startsWith("images/") ? "<img src=\"" + p.image + "\" alt=\"" + p.name + "\" style=\"width:100%;height:100%;object-fit:cover\">" : p.image}
+                    </div>
+                    <div class="shop-card-body">
+                        <h3>${p.name}</h3>
+                        <div class="shop-price-row">
+                            <span class="shop-price">¥${p.price}</span>
+                            ${p.originalPrice ? `<span class="shop-price-original">¥${p.originalPrice}</span>` : ''}
+                        </div>
+                        <a href="${p.url}" class="shop-btn" target="_blank" rel="nofollow noopener">去淘宝购买</a>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        document.addEventListener('DOMContentLoaded', renderProducts);
+    </script>
+    <script src="shared.js"></script>
+</body>
+</html>
