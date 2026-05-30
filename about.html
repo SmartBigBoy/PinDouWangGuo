@@ -14,382 +14,19 @@
     <meta property="og:description" content="了解拼豆艺术的历史发展。">
     <meta property="og:url" content="https://pindou.skin/about.html">
     <link rel="stylesheet" href="style.css">
-    <style>
-        :root {
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-            --secondary-gradient: linear-gradient(135deg, #ff6b6b 0%, #ee5a9b 100%);
-            --bg-color: #f5f7fa;
-            --card-bg: #ffffff;
-            --text-dark: #2d3748;
-            --text-light: #718096;
-            --border-radius: 16px;
-            --shadow: 0 4px 20px rgba(0,0,0,0.08);
-            --shadow-hover: 0 8px 30px rgba(0,0,0,0.12);
-        }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        <!-- 统计代码 (由 shared.js 注入) -->
+    <div id="analytics-placeholder"></div>
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            background: var(--bg-color);
-            color: var(--text-dark);
-            line-height: 1.6;
-            min-height: 100vh;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 100px 24px 40px;
-        }
-
-        .timeline-container {
-            background: var(--card-bg);
-            border-radius: var(--border-radius);
-            padding: 40px;
-            box-shadow: var(--shadow);
-        }
-
-        .timeline-title {
-            text-align: center;
-            margin-bottom: 50px;
-        }
-
-        .timeline-title h1 {
-            font-size: 2rem;
-            color: #ff6b6b;
-            margin-bottom: 12px;
-        }
-
-        .timeline-title p {
-            color: var(--text-light);
-            font-size: 1rem;
-        }
-
-        .timeline {
-            position: relative;
-            padding: 20px 0 40px;
-        }
-
-        .timeline::before {
-            content: '';
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 3px;
-            height: 100%;
-            background: linear-gradient(180deg, #ff6b6b 0%, #667eea 50%, #4ecdc4 100%);
-            border-radius: 2px;
-        }
-
-        .timeline-item {
-            position: relative;
-            margin-bottom: 40px;
-            display: flex;
-        }
-
-        .timeline-item:nth-child(odd) {
-            justify-content: flex-start;
-            padding-right: calc(50% + 30px);
-        }
-
-        .timeline-item:nth-child(even) {
-            justify-content: flex-end;
-            padding-left: calc(50% + 30px);
-        }
-
-        .timeline-dot {
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 16px;
-            height: 16px;
-            background: #fff;
-            border: 3px solid #ff6b6b;
-            border-radius: 50%;
-            z-index: 10;
-            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
-        }
-
-        .timeline-item:nth-child(2) .timeline-dot {
-            border-color: #667eea;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-        }
-
-        .timeline-item:nth-child(3) .timeline-dot {
-            border-color: #fbbf24;
-            box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
-        }
-
-        .timeline-item:nth-child(4) .timeline-dot {
-            border-color: #4ecdc4;
-            box-shadow: 0 2px 8px rgba(78, 205, 196, 0.3);
-        }
-
-        .timeline-content {
-            background: var(--card-bg);
-            border: 1px solid rgba(0,0,0,0.06);
-            border-radius: var(--border-radius);
-            padding: 24px;
-            box-shadow: var(--shadow);
-            max-width: 380px;
-            width: 100%;
-            transition: all 0.3s ease;
-        }
-
-        .timeline-content:hover {
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-hover);
-        }
-
-        .timeline-icon {
-            font-size: 2.5rem;
-            margin-bottom: 12px;
-        }
-
-        .timeline-year {
-            display: inline-block;
-            background: var(--secondary-gradient);
-            color: #fff;
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            margin-bottom: 12px;
-        }
-
-        .timeline-item:nth-child(2) .timeline-year {
-            background: linear-gradient(135deg, #667eea 0%, #8b5cf6 100%);
-        }
-
-        .timeline-item:nth-child(3) .timeline-year {
-            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-        }
-
-        .timeline-item:nth-child(4) .timeline-year {
-            background: linear-gradient(135deg, #4ecdc4 0%, #45b7d1 100%);
-        }
-
-        .timeline-content h3 {
-            font-size: 1.2rem;
-            color: var(--text-dark);
-            margin-bottom: 8px;
-            font-weight: 600;
-        }
-
-        .timeline-content p {
-            color: var(--text-light);
-            font-size: 0.9rem;
-            line-height: 1.7;
-        }
-
-        .fade-in {
-            animation: fadeIn 0.6s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .reasons-section {
-            margin-top: 2rem;
-            background: var(--card-bg);
-            border-radius: var(--border-radius);
-            padding: 2rem;
-            box-shadow: var(--shadow);
-        }
-
-        .reasons-section h2 {
-            text-align: center;
-            margin-bottom: 1.5rem;
-            color: var(--text-dark);
-            font-size: 1.5rem;
-        }
-
-        .reasons-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .reason-item {
-            text-align: center;
-            padding: 1rem;
-        }
-
-        .reason-icon {
-            font-size: 3rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .reason-item h3 {
-            margin-bottom: 0.5rem;
-            color: #555;
-            font-size: 1rem;
-        }
-
-        .reason-item p {
-            color: #777;
-            font-size: 0.85rem;
-            line-height: 1.6;
-        }
-
-        .footer {
-            background: var(--card-bg);
-            padding: 24px;
-            text-align: center;
-            margin-top: 40px;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.03);
-        }
-
-        .footer-brand {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: var(--text-dark);
-        }
-
-        .footer p {
-            color: var(--text-light);
-            font-size: 0.85rem;
-        }
-
-        @media (max-width: 768px) {
-            .menu-toggle {
-                display: flex;
-            }
-
-            .nav-links {
-                display: none;
-                position: absolute;
-                top: 100%;
-                left: 0;
-                right: 0;
-                background: var(--card-bg);
-                flex-direction: column;
-                padding: 16px;
-                box-shadow: var(--shadow);
-                gap: 4px;
-            }
-
-            .nav-links.active {
-                display: flex;
-            }
-
-            .nav-links a {
-                padding: 12px 16px;
-            }
-
-            .container {
-                padding: 80px 16px 24px;
-            }
-
-            .timeline-container {
-                padding: 24px 16px;
-            }
-
-            .timeline::before {
-                left: 20px;
-            }
-
-            .timeline-item,
-            .timeline-item:nth-child(odd),
-            .timeline-item:nth-child(even) {
-                padding-left: 50px;
-                padding-right: 0;
-                justify-content: flex-start;
-            }
-
-            .timeline-dot {
-                left: 20px;
-            }
-
-            .timeline-content {
-                max-width: 100%;
-            }
-
-            .reasons-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 1rem;
-            }
-
-            .reason-item {
-                padding: 0.5rem;
-            }
-
-            .reason-icon {
-                font-size: 2.5rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .reasons-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .timeline-title h1 {
-                font-size: 1.5rem;
-            }
-        }
-    </style>
-    
-    <!-- 百度统计 -->
-    <script>
-    var _hmt = _hmt || [];
-    (function() {
-      var hm = document.createElement("script");
-      hm.src = "https://hm.baidu.com/hm.js?d222a52a2278471724ac0e485cc182ec";
-      var s = document.getElementsByTagName("script")[0]; 
-      s.parentNode.insertBefore(hm, s);
-    })();
-    </script>
-    <!-- Google tag (gtag.js) -->
-    <meta name="baidu-site-verification" content="codeva-eEiOyMiFJh" />
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-6CF7YT06DK"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-6CF7YT06DK');
-    </script>
+    <!-- 社交分享图 -->
+    <meta property="og:image" content="https://pindou.skin/images/og-preview.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:image" content="https://pindou.skin/images/og-preview.png">
 </head>
-<body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="nav-brand">
-                <a href="index.html" class="brand-link">
-                    <img src="logo.svg" alt="拼豆王国" class="brand-icon">
-                    <span class="brand-text">拼豆王国</span>
-                </a>
-            </div>
-            <div class="nav-menu">
-                <a href="index.html" class="nav-link">首页</a>
-                <a href="index.html#generator" class="nav-link">生成器</a>
-                <a href="colors.html" class="nav-link">色卡</a>
-                <a href="about.html" class="nav-link active">拼豆历史</a>
-                <a href="library.html" class="nav-link">素材库</a>
-            </div>
-            <button class="nav-toggle" id="navToggle">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-        </div>
-    </nav>
+<body class="about-page">
+    <!-- 导航栏 (由 shared.js 注入) -->
+    <div id="navbar-placeholder"></div>
 
     <div class="container">
         <div class="timeline-container fade-in">
@@ -429,13 +66,8 @@
         </div>
     </div>
 
-    <footer class="footer">
-        <div class="footer-brand">
-            <span class="logo-icon">🎨</span>
-            <span>拼豆王国</span>
-        </div>
-        <p>© 2025 拼豆王国 | 使用时请确保图片版权合规</p>
-    </footer>
+    <!-- 页脚 (由 shared.js 注入) -->
+    <div id="footer-placeholder"></div>
 
     <script>
         const timelineData = [
@@ -463,15 +95,16 @@
         document.addEventListener('DOMContentLoaded', () => {
             renderTimeline(timelineData);
 
-            const menuToggle = document.getElementById('menuToggle');
-            const navLinks = document.getElementById('navLinks');
-            
-            if (menuToggle && navLinks) {
-                menuToggle.addEventListener('click', () => {
-                    navLinks.classList.toggle('active');
+            const navToggle = document.getElementById('navToggle');
+            const navMenu = document.querySelector('.nav-menu');
+
+            if (navToggle && navMenu) {
+                navToggle.addEventListener('click', () => {
+                    navMenu.classList.toggle('active');
                 });
             }
         });
     </script>
+    <script src="shared.js"></script>
 </body>
 </html>

@@ -311,31 +311,6 @@
         }
 
         @media (max-width: 768px) {
-            .menu-toggle {
-                display: flex;
-            }
-
-            .nav-links {
-                display: none;
-                position: absolute;
-                top: 100%;
-                left: 0;
-                right: 0;
-                background: var(--card-bg);
-                flex-direction: column;
-                padding: 16px;
-                box-shadow: var(--shadow);
-                gap: 4px;
-            }
-
-            .nav-links.active {
-                display: flex;
-            }
-
-            .nav-links a {
-                padding: 12px 16px;
-            }
-
             .container {
                 padding: 80px 16px 24px;
             }
@@ -371,49 +346,18 @@
         }
     </style>
     
-    <!-- 百度统计 -->
-    <script>
-    var _hmt = _hmt || [];
-    (function() {
-      var hm = document.createElement("script");
-      hm.src = "https://hm.baidu.com/hm.js?d222a52a2278471724ac0e485cc182ec";
-      var s = document.getElementsByTagName("script")[0]; 
-      s.parentNode.insertBefore(hm, s);
-    })();
-    </script>
-    <!-- Google tag (gtag.js) -->
-    <meta name="baidu-site-verification" content="codeva-eEiOyMiFJh" />
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-6CF7YT06DK"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-6CF7YT06DK');
-    </script>
+        <!-- 统计代码 (由 shared.js 注入) -->
+    <div id="analytics-placeholder"></div>
+
+    <!-- 社交分享图 -->
+    <meta property="og:image" content="https://pindou.skin/images/og-preview.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:image" content="https://pindou.skin/images/og-preview.png">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="nav-brand">
-                <a href="index.html" class="brand-link">
-                    <img src="logo.svg" alt="拼豆王国" class="brand-icon">
-                    <span class="brand-text">拼豆王国</span>
-                </a>
-            </div>
-            <div class="nav-menu">
-                <a href="index.html" class="nav-link">首页</a>
-                <a href="index.html#generator" class="nav-link">生成器</a>
-                <a href="colors.html" class="nav-link">色卡</a>
-                <a href="about.html" class="nav-link">拼豆历史</a>
-                <a href="library.html" class="nav-link">素材库</a>
-            </div>
-            <button class="nav-toggle" id="navToggle">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-        </div>
-    </nav>
+    <!-- 导航栏 (由 shared.js 注入) -->
+    <div id="navbar-placeholder"></div>
 
     <div class="container">
         <div class="page-header fade-in">
@@ -693,13 +637,8 @@
         </div>
     </div>
 
-    <footer class="footer">
-        <div class="footer-brand">
-            <span class="logo-icon">🎨</span>
-            <span>拼豆王国</span>
-        </div>
-        <p>© 2025 拼豆王国 | 使用时请确保图片版权合规</p>
-    </footer>
+    <!-- 页脚 (由 shared.js 注入) -->
+    <div id="footer-placeholder"></div>
 
     <script>
         function filterCategory(category) {

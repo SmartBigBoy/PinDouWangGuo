@@ -14,384 +14,19 @@
     <meta property="og:description" content="免费像素艺术素材库，多款热门IP图案模板。">
     <meta property="og:url" content="https://pindou.skin/library.html">
     <link rel="stylesheet" href="style.css">
-    <style>
-        :root {
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-            --secondary-gradient: linear-gradient(135deg, #ff6b6b 0%, #ee5a9b 100%);
-            --bg-color: #f5f7fa;
-            --card-bg: #ffffff;
-            --text-dark: #2d3748;
-            --text-light: #718096;
-            --primary-color: #ff6b6b;
-            --border-radius: 16px;
-            --shadow: 0 4px 20px rgba(0,0,0,0.08);
-            --shadow-hover: 0 8px 30px rgba(0,0,0,0.12);
-        }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        <!-- 统计代码 (由 shared.js 注入) -->
+    <div id="analytics-placeholder"></div>
 
-        body {
-            font-family: -apple-system, BlMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            background: var(--bg-color);
-            color: var(--text-dark);
-            line-height: 1.6;
-            min-height: 100vh;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 100px 24px 40px;
-        }
-
-        .page-header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
-        .page-header h1 {
-            font-size: 2.2rem;
-            color: #ff6b6b;
-            margin-bottom: 12px;
-        }
-
-        .page-header p {
-            color: var(--text-light);
-            font-size: 1rem;
-        }
-
-        .category-filter {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 40px;
-            flex-wrap: wrap;
-        }
-
-        .filter-btn {
-            padding: 10px 24px;
-            border: none;
-            border-radius: 25px;
-            background: var(--card-bg);
-            color: var(--text-light);
-            font-size: 0.95rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: var(--shadow);
-        }
-
-        .filter-btn:hover {
-            background: rgba(102, 126, 234, 0.1);
-            color: #667eea;
-        }
-
-        .filter-btn.active {
-            background: var(--secondary-gradient);
-            color: #fff;
-        }
-
-        .library-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 25px;
-        }
-
-        .library-card {
-            background: var(--card-bg);
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            box-shadow: var(--shadow);
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .library-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--shadow-hover);
-        }
-
-        .library-preview {
-            height: 160px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .library-preview img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-        }
-
-        .library-badge {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            background: var(--secondary-gradient);
-            color: #fff;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .library-icon {
-            font-size: 4rem;
-        }
-
-        .library-info {
-            padding: 20px;
-        }
-
-        .library-title {
-            font-size: 1.1rem;
-            color: var(--text-dark);
-            margin-bottom: 10px;
-            font-weight: 600;
-        }
-
-        .library-meta {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 0.85rem;
-            color: var(--text-light);
-        }
-
-        .library-category {
-            color: #667eea;
-            font-weight: 500;
-        }
-
-        .library-stats {
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #eee;
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.8rem;
-            color: var(--text-light);
-        }
-
-        .library-stats span {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .fade-in {
-            animation: fadeIn 0.6s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .footer {
-            background: var(--card-bg);
-            padding: 24px;
-            text-align: center;
-            margin-top: 60px;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.03);
-        }
-
-        .footer-brand {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: var(--text-dark);
-        }
-
-        .footer p {
-            color: var(--text-light);
-            font-size: 0.85rem;
-        }
-
-        .stardew-preview {
-            background: linear-gradient(135deg, #4a7c59 0%, #6b9b7a 50%, #8fbc8f 100%) !important;
-        }
-
-        .animal-preview {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
-        }
-
-        .food-preview {
-            background: linear-gradient(135deg, #f5576c 0%, #fda085 100%) !important;
-        }
-
-        .cartoon-preview {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        }
-
-        .other-preview {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
-        }
-
-        .lightbox-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            cursor: zoom-out;
-        }
-
-        .lightbox-overlay.active {
-            display: flex;
-            animation: fadeIn 0.3s ease;
-        }
-
-        .lightbox-content {
-            max-width: 90vw;
-            max-height: 85vh;
-            object-fit: contain;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-            cursor: default;
-        }
-
-        .lightbox-caption {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #fff;
-            font-size: 1.1rem;
-            background: rgba(0,0,0,0.6);
-            padding: 10px 20px;
-            border-radius: 25px;
-            white-space: nowrap;
-        }
-
-        .lightbox-close {
-            position: absolute;
-            top: 20px;
-            right: 30px;
-            color: #fff;
-            font-size: 2.5rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: transform 0.2s;
-            user-select: none;
-        }
-
-        .lightbox-close:hover {
-            transform: rotate(90deg);
-        }
-
-        @media (max-width: 768px) {
-            .menu-toggle {
-                display: flex;
-            }
-
-            .nav-links {
-                display: none;
-                position: absolute;
-                top: 100%;
-                left: 0;
-                right: 0;
-                background: var(--card-bg);
-                flex-direction: column;
-                padding: 16px;
-                box-shadow: var(--shadow);
-                gap: 4px;
-            }
-
-            .nav-links.active {
-                display: flex;
-            }
-
-            .nav-links a {
-                padding: 12px 16px;
-            }
-
-            .container {
-                padding: 80px 16px 24px;
-            }
-
-            .page-header h1 {
-                font-size: 1.8rem;
-            }
-
-            .filter-btn {
-                padding: 8px 18px;
-                font-size: 0.85rem;
-            }
-
-            .library-grid {
-                grid-template-columns: 1fr;
-                gap: 20px;
-            }
-        }
-    </style>
-    
-    <!-- 百度统计 -->
-    <script>
-    var _hmt = _hmt || [];
-    (function() {
-      var hm = document.createElement("script");
-      hm.src = "https://hm.baidu.com/hm.js?d222a52a2278471724ac0e485cc182ec";
-      var s = document.getElementsByTagName("script")[0]; 
-      s.parentNode.insertBefore(hm, s);
-    })();
-    </script>
-    <!-- Google tag (gtag.js) -->
-    <meta name="baidu-site-verification" content="codeva-eEiOyMiFJh" />
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-6CF7YT06DK"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-6CF7YT06DK');
-    </script>
+    <!-- 社交分享图 -->
+    <meta property="og:image" content="https://pindou.skin/images/og-preview.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:image" content="https://pindou.skin/images/og-preview.png">
 </head>
-<body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="nav-brand">
-                <a href="index.html" class="brand-link">
-                    <img src="logo.svg" alt="拼豆王国" class="brand-icon">
-                    <span class="brand-text">拼豆王国</span>
-                </a>
-            </div>
-            <div class="nav-menu">
-                <a href="index.html" class="nav-link">首页</a>
-                <a href="index.html#generator" class="nav-link">生成器</a>
-                <a href="colors.html" class="nav-link">色卡</a>
-                <a href="about.html" class="nav-link">拼豆历史</a>
-                <a href="library.html" class="nav-link active">素材库</a>
-            </div>
-            <button class="nav-toggle" id="navToggle">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-        </div>
-    </nav>
+<body class="library-page">
+    <!-- 导航栏 (由 shared.js 注入) -->
+    <div id="navbar-placeholder"></div>
 
     <div class="container">
         <div class="page-header fade-in">
@@ -400,388 +35,119 @@
         </div>
 
         <div class="category-filter fade-in">
-            <button class="filter-btn active" onclick="filterCategory('all')">全部</button>
-            <button class="filter-btn" onclick="filterCategory('stardew')">星露谷物语</button>
-            <button class="filter-btn" onclick="filterCategory('animal')">动物萌宠</button>
-            <button class="filter-btn" onclick="filterCategory('food')">美食饮品</button>
-            <button class="filter-btn" onclick="filterCategory('cartoon')">动漫IP</button>
-            <button class="filter-btn" onclick="filterCategory('other')">其他</button>
+            <button class="filter-btn active" data-category="all">全部</button>
+            <button class="filter-btn" data-category="stardew">星露谷物语</button>
+            <button class="filter-btn" data-category="animal">动物萌宠</button>
+            <button class="filter-btn" data-category="food">美食饮品</button>
+            <button class="filter-btn" data-category="cartoon">动漫IP</button>
+            <button class="filter-btn" data-category="other">其他</button>
         </div>
 
         <div class="library-grid" id="libraryGrid">
-            <div class="library-card fade-in" data-category="stardew">
-                <div class="library-preview stardew-preview" style="background: #f5f5f5; cursor: zoom-in;" onclick="openLightbox('images/library/Bouncer.png', '星露谷物语 - Bouncer')">
-                    <span class="library-badge">免费</span>
-                    <img src="images/library/Bouncer.png" alt="星露谷物语人物">
-                </div>
-                <div class="library-info">
-                    <h3 class="library-title">星露谷物语 - Bouncer</h3>
-                    <div class="library-meta">
-                        <span class="library-category">🌾 星露谷物语</span>
-                        <span>1个素材</span>
-                    </div>
-                    <div class="library-stats">
-                        <span>📐 32×32</span>
-                        <span>⬜ 方形</span>
-                    </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadImage('images/library/Bouncer.png', 'Bouncer.png')" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: linear-gradient(135deg, #ff6b6b, #ee5a9b); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; text-align: center; cursor: pointer; border: none;">
-                        📥 下载素材
-                    </button>
-                </div>
-            </div>
-
-            <div class="library-card fade-in" data-category="stardew">
-                <div class="library-preview stardew-preview" style="background: #f5f5f5; cursor: zoom-in;" onclick="openLightbox('images/library/Gunther.png', '星露谷物语 - Gunther')">
-                    <span class="library-badge">免费</span>
-                    <img src="images/library/Gunther.png" alt="星露谷物语人物">
-                </div>
-                <div class="library-info">
-                    <h3 class="library-title">星露谷物语 - Gunther</h3>
-                    <div class="library-meta">
-                        <span class="library-category">🌾 星露谷物语</span>
-                        <span>1个素材</span>
-                    </div>
-                    <div class="library-stats">
-                        <span>📐 32×32</span>
-                        <span>⬜ 方形</span>
-                    </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadImage('images/library/Gunther.png', 'Gunther.png')" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: linear-gradient(135deg, #ff6b6b, #ee5a9b); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; text-align: center; cursor: pointer; border: none;">
-                        📥 下载素材
-                    </button>
-                </div>
-            </div>
-
-            <div class="library-card fade-in" data-category="stardew">
-                <div class="library-preview stardew-preview" style="background: #f5f5f5; cursor: zoom-in;" onclick="openLightbox('images/library/Caroline.png', '星露谷物语 - Caroline')">
-                    <span class="library-badge">免费</span>
-                    <img src="images/library/Caroline.png" alt="星露谷物语人物">
-                </div>
-                <div class="library-info">
-                    <h3 class="library-title">星露谷物语 - Caroline</h3>
-                    <div class="library-meta">
-                        <span class="library-category">🌾 星露谷物语</span>
-                        <span>1个素材</span>
-                    </div>
-                    <div class="library-stats">
-                        <span>📐 32×32</span>
-                        <span>⬜ 方形</span>
-                    </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadImage('images/library/Caroline.png', 'Caroline.png')" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: linear-gradient(135deg, #ff6b6b, #ee5a9b); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; text-align: center; cursor: pointer; border: none;">
-                        📥 下载素材
-                    </button>
-                </div>
-            </div>
-
-            <div class="library-card fade-in" data-category="stardew">
-                <div class="library-preview stardew-preview" style="background: #f5f5f5; cursor: zoom-in;" onclick="openLightbox('images/library/Gil.png', '星露谷物语 - Gil')">
-                    <span class="library-badge">免费</span>
-                    <img src="images/library/Gil.png" alt="星露谷物语人物">
-                </div>
-                <div class="library-info">
-                    <h3 class="library-title">星露谷物语 - Gil</h3>
-                    <div class="library-meta">
-                        <span class="library-category">🌾 星露谷物语</span>
-                        <span>1个素材</span>
-                    </div>
-                    <div class="library-stats">
-                        <span>📐 32×32</span>
-                        <span>⬜ 方形</span>
-                    </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadImage('images/library/Gil.png', 'Gil.png')" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: linear-gradient(135deg, #ff6b6b, #ee5a9b); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; text-align: center; cursor: pointer; border: none;">
-                        📥 下载素材
-                    </button>
-                </div>
-            </div>
-
-            <div class="library-card fade-in" data-category="stardew">
-                <div class="library-preview stardew-preview" style="background: #f5f5f5; cursor: zoom-in;" onclick="openLightbox('images/library/Grandpa.png', '星露谷物语 - Grandpa')">
-                    <span class="library-badge">免费</span>
-                    <img src="images/library/Grandpa.png" alt="星露谷物语人物">
-                </div>
-                <div class="library-info">
-                    <h3 class="library-title">星露谷物语 - Grandpa</h3>
-                    <div class="library-meta">
-                        <span class="library-category">🌾 星露谷物语</span>
-                        <span>1个素材</span>
-                    </div>
-                    <div class="library-stats">
-                        <span>📐 32×32</span>
-                        <span>⬜ 方形</span>
-                    </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadImage('images/library/Grandpa.png', 'Grandpa.png')" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: linear-gradient(135deg, #ff6b6b, #ee5a9b); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; text-align: center; cursor: pointer; border: none;">
-                        📥 下载素材
-                    </button>
-                </div>
-            </div>
-
-            <div class="library-card fade-in" data-category="stardew">
-                <div class="library-preview stardew-preview" style="background: #f5f5f5; cursor: zoom-in;" onclick="openLightbox('images/library/Krobus.png', '星露谷物语 - Krobus')">
-                    <span class="library-badge">免费</span>
-                    <img src="images/library/Krobus.png" alt="星露谷物语人物">
-                </div>
-                <div class="library-info">
-                    <h3 class="library-title">星露谷物语 - Krobus</h3>
-                    <div class="library-meta">
-                        <span class="library-category">🌾 星露谷物语</span>
-                        <span>1个素材</span>
-                    </div>
-                    <div class="library-stats">
-                        <span>📐 32×32</span>
-                        <span>⬜ 方形</span>
-                    </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadImage('images/library/Krobus.png', 'Krobus.png')" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: linear-gradient(135deg, #ff6b6b, #ee5a9b); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; text-align: center; cursor: pointer; border: none;">
-                        📥 下载素材
-                    </button>
-                </div>
-            </div>
-
-            <div class="library-card fade-in" data-category="stardew">
-                <div class="library-preview stardew-preview" style="background: #f5f5f5; cursor: zoom-in;" onclick="openLightbox('images/library/Marlon.png', '星露谷物语 - Marlon')">
-                    <span class="library-badge">免费</span>
-                    <img src="images/library/Marlon.png" alt="星露谷物语人物">
-                </div>
-                <div class="library-info">
-                    <h3 class="library-title">星露谷物语 - Marlon</h3>
-                    <div class="library-meta">
-                        <span class="library-category">🌾 星露谷物语</span>
-                        <span>1个素材</span>
-                    </div>
-                    <div class="library-stats">
-                        <span>📐 32×32</span>
-                        <span>⬜ 方形</span>
-                    </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadImage('images/library/Marlon.png', 'Marlon.png')" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: linear-gradient(135deg, #ff6b6b, #ee5a9b); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; text-align: center; cursor: pointer; border: none;">
-                        📥 下载素材
-                    </button>
-                </div>
-            </div>
-
-            <div class="library-card fade-in" data-category="stardew">
-                <div class="library-preview stardew-preview" style="background: #f5f5f5; cursor: zoom-in;" onclick="openLightbox('images/library/MrQi.png', '星露谷物语 - MrQi')">
-                    <span class="library-badge">免费</span>
-                    <img src="images/library/MrQi.png" alt="星露谷物语人物">
-                </div>
-                <div class="library-info">
-                    <h3 class="library-title">星露谷物语 - MrQi</h3>
-                    <div class="library-meta">
-                        <span class="library-category">🌾 星露谷物语</span>
-                        <span>1个素材</span>
-                    </div>
-                    <div class="library-stats">
-                        <span>📐 32×32</span>
-                        <span>⬜ 方形</span>
-                    </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadImage('images/library/MrQi.png', 'MrQi.png')" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: linear-gradient(135deg, #ff6b6b, #ee5a9b); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; text-align: center; cursor: pointer; border: none;">
-                        📥 下载素材
-                    </button>
-                </div>
-            </div>
-
-            <div class="library-card fade-in" data-category="stardew">
-                <div class="library-preview stardew-preview" style="background: #f5f5f5; cursor: zoom-in;" onclick="openLightbox('images/library/Penny.png', '星露谷物语 - Penny')">
-                    <span class="library-badge">免费</span>
-                    <img src="images/library/Penny.png" alt="星露谷物语人物">
-                </div>
-                <div class="library-info">
-                    <h3 class="library-title">星露谷物语 - Penny</h3>
-                    <div class="library-meta">
-                        <span class="library-category">🌾 星露谷物语</span>
-                        <span>1个素材</span>
-                    </div>
-                    <div class="library-stats">
-                        <span>📐 32×32</span>
-                        <span>⬜ 方形</span>
-                    </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadImage('images/library/Penny.png', 'Penny.png')" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: linear-gradient(135deg, #ff6b6b, #ee5a9b); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; text-align: center; cursor: pointer; border: none;">
-                        📥 下载素材
-                    </button>
-                </div>
-            </div>
-
-            <div class="library-card fade-in" data-category="cartoon">
-                <div class="library-preview cartoon-preview" style="background: #f5f5f5; cursor: zoom-in;" onclick="openLightbox('images/library/Hello Kitty.png', '动漫IP - Hello Kitty')">
-                    <span class="library-badge">免费</span>
-                    <img src="images/library/Hello Kitty.png" alt="Hello Kitty">
-                </div>
-                <div class="library-info">
-                    <h3 class="library-title">动漫IP - Hello Kitty</h3>
-                    <div class="library-meta">
-                        <span class="library-category">🎭 动漫IP</span>
-                        <span>1个素材</span>
-                    </div>
-                    <div class="library-stats">
-                        <span>📐 32×32</span>
-                        <span>⬜ 方形</span>
-                    </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadImage('images/library/Hello%20Kitty.png', 'Hello_Kitty.png')" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: linear-gradient(135deg, #ff6b6b, #ee5a9b); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; text-align: center; cursor: pointer; border: none;">
-                        📥 下载素材
-                    </button>
-                </div>
-            </div>
-
-            <div class="library-card fade-in" data-category="other">
-                <div class="library-preview other-preview" style="background: #f5f5f5; cursor: zoom-in;" onclick="openLightbox('images/library/muscle_man_1.png', '其他 - 肌肉男')">
-                    <span class="library-badge">免费</span>
-                    <img src="images/library/muscle_man_1.png" alt="肌肉男">
-                </div>
-                <div class="library-info">
-                    <h3 class="library-title">其他 - 肌肉男</h3>
-                    <div class="library-meta">
-                        <span class="library-category">📦 其他</span>
-                        <span>1个素材</span>
-                    </div>
-                    <div class="library-stats">
-                        <span>📐 58×58</span>
-                        <span>⬜ 方形</span>
-                    </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadImage('images/library/muscle_man_1.png', '肌肉男.png')" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: linear-gradient(135deg, #ff6b6b, #ee5a9b); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; text-align: center; cursor: pointer; border: none;">
-                        📥 下载素材
-                    </button>
-                </div>
-            </div>
-
-            <div class="library-card fade-in" data-category="other">
-                <div class="library-preview other-preview" style="background: #f5f5f5; cursor: zoom-in;" onclick="openLightbox('images/library/Icon.png', '其他 - Icon')">
-                    <span class="library-badge">免费</span>
-                    <img src="images/library/Icon.png" alt="Icon">
-                </div>
-                <div class="library-info">
-                    <h3 class="library-title">其他 - Icon</h3>
-                    <div class="library-meta">
-                        <span class="library-category">📦 其他</span>
-                        <span>1个素材</span>
-                    </div>
-                    <div class="library-stats">
-                        <span>📐 32×32</span>
-                        <span>⬜ 方形</span>
-                    </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadImage('images/library/Icon.png', 'Icon.png')" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: linear-gradient(135deg, #ff6b6b, #ee5a9b); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; text-align: center; cursor: pointer; border: none;">
-                        📥 下载素材
-                    </button>
-                </div>
-            </div>
-
-            <div class="library-card fade-in" data-category="other">
-                <div class="library-preview other-preview" style="background: #f5f5f5; cursor: zoom-in;" onclick="openLightbox('images/library/happy_puppy.png', '其他 - 快乐小狗')">
-                    <span class="library-badge">免费</span>
-                    <img src="images/library/happy_puppy.png" alt="快乐小狗">
-                </div>
-                <div class="library-info">
-                    <h3 class="library-title">其他 - 快乐小狗</h3>
-                    <div class="library-meta">
-                        <span class="library-category">📦 其他</span>
-                        <span>1个素材</span>
-                    </div>
-                    <div class="library-stats">
-                        <span>📐 58×58</span>
-                        <span>⬜ 方形</span>
-                    </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadImage('images/library/happy_puppy.png', '快乐小狗.png')" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: linear-gradient(135deg, #ff6b6b, #ee5a9b); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; text-align: center; cursor: pointer; border: none;">
-                        ⬇ 下载
-                    </button>
-                </div>
-            </div>
-
-            <div class="library-card fade-in" data-category="other">
-                <div class="library-preview other-preview" style="background: #f5f5f5; cursor: zoom-in;" onclick="openLightbox('images/library/muscle_man_1.png', '其他 - 肌肉男')">
-                    <span class="library-badge">免费</span>
-                    <img src="images/library/muscle_man_1.png" alt="肌肉男">
-                </div>
-                <div class="library-info">
-                    <h3 class="library-title">其他 - 肌肉男</h3>
-                    <div class="library-meta">
-                        <span class="library-category">📦 其他</span>
-                        <span>1个素材</span>
-                    </div>
-                    <div class="library-stats">
-                        <span>📐 58×58</span>
-                        <span>⬜ 方形</span>
-                    </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadImage('images/library/muscle_man_1.png', '肌肉男.png')" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: linear-gradient(135deg, #ff6b6b, #ee5a9b); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; text-align: center; cursor: pointer; border: none;">
-                        ⬇ 下载
-                    </button>
-                </div>
-            </div>
-
-            <div class="library-card fade-in" data-category="other">
-                <div class="library-preview other-preview" style="background: #f5f5f5; cursor: zoom-in;" onclick="openLightbox('images/library/american_muscle_man.png', '其他 - 美式肌肉男')">
-                    <span class="library-badge">免费</span>
-                    <img src="images/library/american_muscle_man.png" alt="美式肌肉男">
-                </div>
-                <div class="library-info">
-                    <h3 class="library-title">其他 - 美式肌肉男</h3>
-                    <div class="library-meta">
-                        <span class="library-category">📦 其他</span>
-                        <span>1个素材</span>
-                    </div>
-                    <div class="library-stats">
-                        <span>📐 58×58</span>
-                        <span>⬜ 方形</span>
-                    </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadImage('images/library/american_muscle_man.png', '美式肌肉男.png')" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: linear-gradient(135deg, #ff6b6b, #ee5a9b); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; text-align: center; cursor: pointer; border: none;">
-                        📥 下载素材
-                    </button>
-                </div>
-            </div>
+            <!-- Cards rendered by JavaScript -->
         </div>
 
-        <div class="fade-in" style="margin-top: 2rem; background: var(--card-bg); border-radius: var(--border-radius); padding: 2rem; box-shadow: var(--shadow);">
-            <h2 style="text-align: center; margin-bottom: 1.5rem; color: #333;">📌 使用须知</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
-                <div style="padding: 1rem; background: #f8f9fa; border-radius: 10px;">
-                    <h3 style="color: #555; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <span>✅</span> 允许的使用方式
-                    </h3>
-                    <ul style="color: #666; font-size: 0.9rem; line-height: 1.8; padding-left: 1.2rem;">
+        <div class="usage-section fade-in">
+            <h2>📌 使用须知</h2>
+            <div class="usage-grid">
+                <div class="usage-card allowed">
+                    <h3><span>✅</span> 允许的使用方式</h3>
+                    <ul>
                         <li>个人手工制作拼豆作品</li>
                         <li>非商业用途的作品展示</li>
                         <li>学习和交流像素艺术</li>
                         <li>亲友间的礼物赠送</li>
                     </ul>
                 </div>
-                <div style="padding: 1rem; background: #fff5f5; border-radius: 10px;">
-                    <h3 style="color: #c53030; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <span>🚫</span> 禁止的使用方式
-                    </h3>
-                    <ul style="color: #666; font-size: 0.9rem; line-height: 1.8; padding-left: 1.2rem;">
+                <div class="usage-card forbidden">
+                    <h3><span>🚫</span> 禁止的使用方式</h3>
+                    <ul>
                         <li>任何形式的商用售卖</li>
                         <li>二次打包后进行传播</li>
                         <li>用于NFT等数字藏品</li>
                         <li>侵犯原作品版权的行为</li>
                     </ul>
                 </div>
-                <div style="padding: 1rem; background: #f0fff4; border-radius: 10px;">
-                    <h3 style="color: #2f855a; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <span>💡</span> 素材提交
-                    </h3>
-                    <p style="color: #666; font-size: 0.9rem; line-height: 1.8;">
-                        欢迎分享你的原创拼豆素材！将素材发送至我们的邮箱，审核通过后将展示在素材库中，并标注作者信息。
-                    </p>
+                <div class="usage-card submit">
+                    <h3><span>💡</span> 素材提交</h3>
+                    <p>欢迎分享你的原创拼豆素材！将素材发送至我们的邮箱，审核通过后将展示在素材库中，并标注作者信息。</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="lightbox-overlay" id="lightboxOverlay" onclick="closeLightbox()">
-        <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
-        <img id="lightboxImage" class="lightbox-content" alt="放大图片" onclick="event.stopPropagation()">
+    <div class="lightbox-overlay" id="lightboxOverlay" role="dialog" aria-modal="true" aria-label="图片预览" onclick="closeLightbox()">
+        <span class="lightbox-close" onclick="closeLightbox()" tabindex="0" role="button" aria-label="关闭预览" onkeydown="if(event.key==='Enter'||event.key===' ')closeLightbox()">&times;</span>
+        <img id="lightboxImage" class="lightbox-content" alt="预览大图" onclick="event.stopPropagation()">
         <div class="lightbox-caption" id="lightboxCaption"></div>
     </div>
 
-    <footer class="footer">
-        <div class="footer-brand">
-            <span class="logo-icon">🎨</span>
-            <span>拼豆王国</span>
-        </div>
-        <p>© 2025 拼豆王国 | 使用时请确保图片版权合规</p>
-    </footer>
+    <!-- 页脚 (由 shared.js 注入) -->
+    <div id="footer-placeholder"></div>
 
     <script>
+        // 素材数据
+        const libraryData = [
+            { title: '星露谷物语 - Bouncer', image: 'images/library/Bouncer.png', category: 'stardew', categoryLabel: '🌾 星露谷物语', previewClass: 'stardew-preview', size: '32×32', shape: '方形' },
+            { title: '星露谷物语 - Gunther', image: 'images/library/Gunther.png', category: 'stardew', categoryLabel: '🌾 星露谷物语', previewClass: 'stardew-preview', size: '32×32', shape: '方形' },
+            { title: '星露谷物语 - Caroline', image: 'images/library/Caroline.png', category: 'stardew', categoryLabel: '🌾 星露谷物语', previewClass: 'stardew-preview', size: '32×32', shape: '方形' },
+            { title: '星露谷物语 - Gil', image: 'images/library/Gil.png', category: 'stardew', categoryLabel: '🌾 星露谷物语', previewClass: 'stardew-preview', size: '32×32', shape: '方形' },
+            { title: '星露谷物语 - Grandpa', image: 'images/library/Grandpa.png', category: 'stardew', categoryLabel: '🌾 星露谷物语', previewClass: 'stardew-preview', size: '32×32', shape: '方形' },
+            { title: '星露谷物语 - Krobus', image: 'images/library/Krobus.png', category: 'stardew', categoryLabel: '🌾 星露谷物语', previewClass: 'stardew-preview', size: '32×32', shape: '方形' },
+            { title: '星露谷物语 - Marlon', image: 'images/library/Marlon.png', category: 'stardew', categoryLabel: '🌾 星露谷物语', previewClass: 'stardew-preview', size: '32×32', shape: '方形' },
+            { title: '星露谷物语 - MrQi', image: 'images/library/MrQi.png', category: 'stardew', categoryLabel: '🌾 星露谷物语', previewClass: 'stardew-preview', size: '32×32', shape: '方形' },
+            { title: '星露谷物语 - Penny', image: 'images/library/Penny.png', category: 'stardew', categoryLabel: '🌾 星露谷物语', previewClass: 'stardew-preview', size: '32×32', shape: '方形' },
+            { title: '动漫IP - Hello Kitty', image: 'images/library/Hello Kitty.png', category: 'cartoon', categoryLabel: '🎭 动漫IP', previewClass: 'cartoon-preview', size: '32×32', shape: '方形' },
+            { title: '其他 - 肌肉男', image: 'images/library/muscle_man_1.png', category: 'other', categoryLabel: '📦 其他', previewClass: 'other-preview', size: '58×58', shape: '方形' },
+            { title: '其他 - Icon', image: 'images/library/Icon.png', category: 'other', categoryLabel: '📦 其他', previewClass: 'other-preview', size: '32×32', shape: '方形' },
+            { title: '其他 - 快乐小狗', image: 'images/library/happy_puppy.png', category: 'other', categoryLabel: '📦 其他', previewClass: 'other-preview', size: '58×58', shape: '方形' },
+            { title: '其他 - 美式肌肉男', image: 'images/library/american_muscle_man.png', category: 'other', categoryLabel: '📦 其他', previewClass: 'other-preview', size: '58×58', shape: '方形' }
+        ];
+
+        function renderLibraryCards(filter) {
+            const grid = document.getElementById('libraryGrid');
+            const filtered = filter === 'all'
+                ? libraryData
+                : libraryData.filter(item => item.category === filter);
+
+            grid.innerHTML = filtered.map(item => {
+                const filename = item.image.split('/').pop();
+                const downloadFilename = filename.replace(/\s+/g, '_');
+                return `
+                <div class="library-card fade-in" data-category="${item.category}">
+                    <div class="library-preview ${item.previewClass}" style="background: #f5f5f5; cursor: zoom-in;" onclick="openLightbox('${encodeURI(item.image)}', '${item.title}')">
+                        <span class="library-badge">免费</span>
+                        <img src="${item.image}" alt="${item.title}" loading="lazy">
+                    </div>
+                    <div class="library-info">
+                        <h3 class="library-title">${item.title}</h3>
+                        <div class="library-meta">
+                            <span class="library-category">${item.categoryLabel}</span>
+                            <span>1个素材</span>
+                        </div>
+                        <div class="library-stats">
+                            <span>📐 ${item.size}</span>
+                            <span>⬜ ${item.shape}</span>
+                        </div>
+                        <button class="download-btn" onclick="event.stopPropagation(); downloadImage('${encodeURI(item.image)}', '${downloadFilename}')">
+                            📥 下载素材
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function filterCategory(category, btn) {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderLibraryCards(category);
+        }
+
         function openLightbox(imageUrl, caption) {
             const lightbox = document.getElementById('lightboxOverlay');
             const lightboxImage = document.getElementById('lightboxImage');
             const lightboxCaption = document.getElementById('lightboxCaption');
-            
+
             lightboxImage.src = imageUrl;
             lightboxCaption.textContent = caption;
             lightbox.classList.add('active');
@@ -818,32 +184,29 @@
                 closeLightbox();
             }
         });
-        function filterCategory(category) {
-            const cards = document.querySelectorAll('.library-card');
-            const buttons = document.querySelectorAll('.filter-btn');
-            
-            buttons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            cards.forEach(card => {
-                if (category === 'all' || card.dataset.category === category) {
-                    card.style.display = 'block';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-        }
 
         document.addEventListener('DOMContentLoaded', () => {
-            const menuToggle = document.getElementById('menuToggle');
-            const navLinks = document.getElementById('navLinks');
-            
-            if (menuToggle && navLinks) {
-                menuToggle.addEventListener('click', () => {
-                    navLinks.classList.toggle('active');
+            // 渲染素材卡片
+            renderLibraryCards('all');
+
+            // 分类筛选按钮
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    filterCategory(this.dataset.category, this);
+                });
+            });
+
+            // 移动端导航菜单
+            const navToggle = document.getElementById('navToggle');
+            const navMenu = document.querySelector('.nav-menu');
+
+            if (navToggle && navMenu) {
+                navToggle.addEventListener('click', () => {
+                    navMenu.classList.toggle('active');
                 });
             }
         });
     </script>
+    <script src="shared.js"></script>
 </body>
 </html>

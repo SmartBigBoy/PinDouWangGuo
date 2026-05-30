@@ -331,49 +331,18 @@
         }
     </style>
     
-    <!-- 百度统计 -->
-    <script>
-    var _hmt = _hmt || [];
-    (function() {
-      var hm = document.createElement("script");
-      hm.src = "https://hm.baidu.com/hm.js?d222a52a2278471724ac0e485cc182ec";
-      var s = document.getElementsByTagName("script")[0]; 
-      s.parentNode.insertBefore(hm, s);
-    })();
-    </script>
-    <!-- Google tag (gtag.js) -->
-    <meta name="baidu-site-verification" content="codeva-eEiOyMiFJh" />
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-6CF7YT06DK"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-6CF7YT06DK');
-    </script>
+        <!-- 统计代码 (由 shared.js 注入) -->
+    <div id="analytics-placeholder"></div>
+
+    <!-- 社交分享图 -->
+    <meta property="og:image" content="https://pindou.skin/images/og-preview.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:image" content="https://pindou.skin/images/og-preview.png">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="nav-brand">
-                <a href="index.html" class="brand-link">
-                    <img src="logo.svg" alt="拼豆王国" class="brand-icon">
-                    <span class="brand-text">拼豆王国</span>
-                </a>
-            </div>
-            <div class="nav-menu">
-                <a href="index.html#home" class="nav-link">首页</a>
-                <a href="index.html#generator" class="nav-link">生成器</a>
-                <a href="colors.html" class="nav-link active">色卡</a>
-                <a href="about.html" class="nav-link">拼豆历史</a>
-                <a href="library.html" class="nav-link">素材库</a>
-            </div>
-            <button class="nav-toggle" id="navToggle">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-        </div>
-    </nav>
+    <!-- 导航栏 (由 shared.js 注入) -->
+    <div id="navbar-placeholder"></div>
 
     <div class="colors-page">
         <div class="colors-container">
@@ -568,5 +537,6 @@
             document.addEventListener('DOMContentLoaded', init);
         })();
     </script>
+    <script src="shared.js"></script>
 </body>
 </html>
