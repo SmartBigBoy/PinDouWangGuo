@@ -1412,22 +1412,13 @@ function showToast(message) {
 
 document.addEventListener('DOMContentLoaded', () => {
     new PixelArtGenerator();
-    
-    // 移动端导航菜单切换
-    const navToggle = document.getElementById('navToggle');
-    const navMenu = document.querySelector('.nav-menu');
-    
-    if (navToggle && navMenu) {
-        navToggle.addEventListener('click', () => {
-            navMenu.classList.toggle('active');
-        });
-    }
-    
+
     // 点击导航链接时关闭移动端菜单
+    const navMenu = document.querySelector('.nav-menu');
     const navLinks = document.querySelectorAll('.nav-link');
     navLinks.forEach(link => {
         link.addEventListener('click', () => {
-            navMenu.classList.remove('active');
+            if (navMenu) navMenu.classList.remove('active');
         });
     });
 });
