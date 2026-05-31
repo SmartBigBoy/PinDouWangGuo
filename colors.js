@@ -173,7 +173,7 @@ const palettes = {
     },
     artkal: {
         name: 'Artkal',
-        info: 'Artkal 拼豆以高品质著称，颜色鲜艳持久，是专业玩家的首选品牌。色号最齐全的品牌，300+色几乎覆盖所有色调，中文圈最常见。',
+        info: 'Artkal 拼豆以高品质著称，颜色鲜艳持久，是专业玩家的首选品牌。色号最齐全的品牌，176色几乎覆盖所有色调，中文圈最常见。',
         series: {
             S: { name: '标准色系', icon: 'S', color: '#FF0000', colors: [
                 {name:'S01',hex:'#FFFFFF'},{name:'S02',hex:'#FFA38B'},{name:'S03',hex:'#FF8200'},{name:'S04',hex:'#FA4616'},{name:'S05',hex:'#EE2737'},
