@@ -103,24 +103,88 @@
             font-weight: 600;
             color: var(--text-dark);
             line-height: 1.5;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             flex: 1;
         }
-        .shop-price-row {
+        .shop-code-row {
             display: flex;
-            align-items: baseline;
+            align-items: center;
             gap: 8px;
-            margin-bottom: 16px;
+            background: #fef6e7;
+            border: 1px dashed #ff9f43;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
         }
-        .shop-price {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: #ff6b6b;
+        .shop-code-row:active {
+            transform: scale(0.98);
+            background: #fce9cc;
         }
-        .shop-price-original {
+        .shop-code-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #e67e22;
+            background: #fff;
+            padding: 2px 8px;
+            border-radius: 6px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .shop-code {
             font-size: 0.85rem;
-            color: var(--text-muted);
-            text-decoration: line-through;
+            font-weight: 600;
+            color: var(--text-dark);
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            min-width: 0;
+        }
+        .shop-code-copy-icon {
+            flex-shrink: 0;
+            font-size: 0.75rem;
+            color: #e67e22;
+            background: #fff;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .shop-code-row.copied .shop-code-copy-icon {
+            background: #2ecc71;
+            color: #fff;
+        }
+        .shop-code-row.copied .shop-code-label {
+            background: #2ecc71;
+            color: #fff;
+        }
+        .shop-toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(0,0,0,0.85);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            opacity: 0;
+            transition: all 0.3s ease;
+            pointer-events: none;
+            z-index: 99999;
+            white-space: nowrap;
+        }
+        .shop-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
         }
         .shop-btn {
             display: block;
@@ -133,13 +197,19 @@
             font-weight: 700;
             font-size: 0.95rem;
             transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
         }
         .shop-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(255,107,107,0.35);
         }
-        .shop-btn::after {
-            content: ' →';
+        .shop-btn-hint {
+            text-align: center;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+            line-height: 1.4;
         }
         .shop-footer {
             text-align: center;
@@ -156,7 +226,9 @@
             .shop-card-image { height: 150px; font-size: 3rem; }
             .shop-card-body { padding: 16px; }
             .shop-card-body h3 { font-size: 0.9rem; }
-            .shop-price { font-size: 1.3rem; }
+            .shop-code-row { padding: 8px 10px; }
+            .shop-code { font-size: 0.78rem; }
+            .shop-code-copy-icon { padding: 3px 8px; font-size: 0.7rem; }
         }
     </style>
 </head>
@@ -181,14 +253,16 @@
 
     <div id="footer-placeholder"></div>
 
+    <!-- 复制成功 Toast -->
+    <div class="shop-toast" id="shopToast"></div>
+
     <script>
         const products = [
             {
                 name: '265色拼豆补充包211色全套装全色系MARD同款融合材料diy益智玩具',
                 badge: '',
                 coupon: '5元',
-                price: '97.90',
-                originalPrice: '102.90',
+                code: 'https://s.click.taobao.com/xydIQMl',
                 image: 'images/shop-mard-265.jpg',
                 url: 'https://s.click.taobao.com/xydIQMl'
             },
@@ -196,8 +270,7 @@
                 name: '按压自动点珠拼豆笔手diy套装全套具用神器充材料包玩具',
                 badge: '',
                 coupon: '',
-                price: '8.42',
-                originalPrice: '',
+                code: 'https://s.click.taobao.com/Os02QMl',
                 image: 'images/shop-bead-pen.jpg',
                 url: 'https://s.click.taobao.com/Os02QMl'
             },
@@ -205,8 +278,7 @@
                 name: '长钉拼豆板特大号画线款10452加厚耐高温防烫不掉不变形专用白色',
                 badge: '',
                 coupon: '20元',
-                price: '30.10',
-                originalPrice: '',
+                code: 'https://s.click.taobao.com/QB3NqCl',
                 image: 'images/shop-pegboard.jpg',
                 url: 'https://s.click.taobao.com/QB3NqCl'
             },
@@ -214,8 +286,7 @@
                 name: '十个勤天拼豆豆生日礼物女孩子儿童节玩具的女生小学生女孩子10岁',
                 badge: '',
                 coupon: '',
-                price: '67.50',
-                originalPrice: '',
+                code: 'https://s.click.taobao.com/J5ZaPMl',
                 image: 'images/shop-gift.jpg',
                 url: 'https://s.click.taobao.com/J5ZaPMl'
             },
@@ -223,8 +294,7 @@
                 name: '拼豆熨烫布格利特布料闪光烘焙布熨烫工具粗闪亮片纸手工diy毛巾',
                 badge: '',
                 coupon: '1元',
-                price: '17.80',
-                originalPrice: '',
+                code: 'https://s.click.taobao.com/3lI9qCl',
                 image: 'images/shop-iron-cloth.jpg',
                 url: 'https://s.click.taobao.com/3lI9qCl'
             },
@@ -232,8 +302,7 @@
                 name: '拼豆豆手工diy材料包全套工具正版专用熨斗融合豆笔套装女孩玩具',
                 badge: '',
                 coupon: '8元',
-                price: '76.00',
-                originalPrice: '',
+                code: 'https://s.click.taobao.com/bcI0qCl',
                 image: 'images/shop-tool-kit.jpg',
                 url: 'https://s.click.taobao.com/bcI0qCl'
             }
@@ -243,38 +312,120 @@
 
         function renderProducts() {
             const grid = document.getElementById('shopGrid');
-            grid.innerHTML = products.map(p => `
+            grid.innerHTML = products.map((p, i) => `
                 <div class="shop-card fade-in">
                     <div class="shop-card-image">
                         ${p.badge ? `<span class="shop-badge">🔥 ${p.badge}</span>` : ''}
-                        ${p.coupon ? `<span class="shop-coupon">券¥${p.coupon}</span>` : ''}
+                        ${p.coupon ? `<span class="shop-coupon">券${p.coupon}</span>` : ''}
                         ${p.image.startsWith("images/") ? "<img src=\"" + p.image + "\" alt=\"" + p.name + "\" style=\"width:100%;height:100%;object-fit:contain;background:var(--bg-light)\">" : p.image}
                     </div>
                     <div class="shop-card-body">
                         <h3>${p.name}</h3>
-                        <div class="shop-price-row">
-                            <span class="shop-price">¥${p.price}</span>
-                            ${p.originalPrice ? `<span class="shop-price-original">¥${p.originalPrice}</span>` : ''}
+                        <div class="shop-code-row" data-code="${p.code}" data-index="${i}" role="button" tabindex="0" aria-label="复制淘口令">
+                            <span class="shop-code-label">📋 淘口令</span>
+                            <span class="shop-code" id="shopCode_${i}">${p.code}</span>
+                            <span class="shop-code-copy-icon">复制</span>
                         </div>
-                        <a href="${p.url}" class="shop-btn" target="_blank" rel="nofollow noopener">去淘宝购买</a>
+                        <button class="shop-btn" data-url="${p.url}">打开淘宝</button>
+                        <div class="shop-btn-hint">👆 复制口令后打开淘宝粘贴即可</div>
                     </div>
                 </div>
             `).join('');
         }
 
+        /** 复制淘口令到剪贴板 */
+        function copyTaobaoCode(code, rowEl) {
+            // 尝试 navigator.clipboard (优先)
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(code).then(function() {
+                    showCopyFeedback(rowEl);
+                }).catch(function() {
+                    fallbackCopy(code, rowEl);
+                });
+            } else {
+                fallbackCopy(code, rowEl);
+            }
+        }
+
+        /** 兼容旧浏览器的复制方式 */
+        function fallbackCopy(code, rowEl) {
+            var ta = document.createElement('textarea');
+            ta.value = code;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            ta.style.top = '0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            try {
+                document.execCommand('copy');
+                showCopyFeedback(rowEl);
+            } catch (e) {
+                // 复制失败，选中文本让用户手动复制
+                ta.style.left = '10px';
+                ta.style.top = '50%';
+                ta.style.width = '80%';
+                ta.style.height = '40px';
+                ta.style.fontSize = '16px';
+                ta.style.zIndex = '99999';
+                setTimeout(function() {
+                    document.body.removeChild(ta);
+                }, 3000);
+                return;
+            }
+            document.body.removeChild(ta);
+        }
+
+        /** 复制成功视觉反馈 */
+        function showCopyFeedback(rowEl) {
+            rowEl.classList.add('copied');
+            var icon = rowEl.querySelector('.shop-code-copy-icon');
+            var label = rowEl.querySelector('.shop-code-label');
+            var oldText = icon.textContent;
+            var oldLabel = label.textContent;
+            icon.textContent = '✓ 已复制';
+            label.textContent = '✅';
+
+            // 显示全局 Toast
+            var toast = document.getElementById('shopToast');
+            if (toast) {
+                toast.textContent = '✅ 已复制，打开淘宝即可粘贴查看';
+                toast.classList.add('show');
+                clearTimeout(toast._timer);
+                toast._timer = setTimeout(function() { toast.classList.remove('show'); }, 2500);
+            }
+
+            // 2 秒后还原
+            setTimeout(function() {
+                rowEl.classList.remove('copied');
+                icon.textContent = oldText;
+                label.textContent = oldLabel;
+            }, 2000);
+        }
+
         document.addEventListener('DOMContentLoaded', renderProducts);
 
-        /**
-         * 移动端点击淘宝购买时，同窗口跳转以触发 Universal Link 唤起淘宝 App
-         * 额外尝试 taobao:// URL Scheme 提高唤醒率
-         */
+        /** 全局点击处理：复制口令 + 打开淘宝 */
         document.addEventListener('click', function(e) {
+            // 点击口令行 → 复制
+            var codeRow = e.target.closest('.shop-code-row');
+            if (codeRow) {
+                var code = codeRow.getAttribute('data-code');
+                if (code) copyTaobaoCode(code, codeRow);
+                return;
+            }
+
+            // 点击打开淘宝按钮
             var btn = e.target.closest('.shop-btn');
-            if (!btn) return;
-            if (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-                e.preventDefault();
-                // 部分手机淘宝支持 Universal Link，同窗口导航可触发 App 打开
-                window.location.href = btn.href;
+            if (btn) {
+                var url = btn.getAttribute('data-url');
+                if (!url) return;
+                if (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                    e.preventDefault();
+                    window.location.href = url;
+                } else {
+                    window.open(url, '_blank');
+                }
             }
         });
     </script>
