@@ -219,7 +219,7 @@ const palettes = {
     },
     perler: {
         name: 'Perler',
-        info: 'Perler 是源自美国的老牌拼豆品牌，颜色经典，品质稳定。约150个色号，覆盖标准色、粉彩、夜光、亮粉、双色等。',
+        info: 'Perler 是源自美国的老牌拼豆品牌，颜色经典，品质稳定。124个色号，覆盖标准色、粉彩、夜光、亮粉、双色等。',
         series: {
             '基础': { name: '基础色系', icon: '基础', color: '#FF0000', colors: [
                 {name:'P01',hex:'#F1F1F1'},{name:'P02',hex:'#E0DEA9'},{name:'P03',hex:'#ECD800'},{name:'P04',hex:'#ED6120'},{name:'P05',hex:'#F01820'},
