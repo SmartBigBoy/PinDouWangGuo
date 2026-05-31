@@ -88,17 +88,6 @@
             font-size: 0.75rem;
             font-weight: 700;
         }
-        .shop-coupon {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            background: #ff6b6b;
-            color: white;
-            padding: 4px 10px;
-            border-radius: 8px;
-            font-size: 0.8rem;
-            font-weight: 700;
-        }
         .shop-card-body {
             padding: 20px;
             flex: 1;
@@ -269,7 +258,6 @@
             {
                 name: '265色拼豆补充包211色全套装全色系MARD同款融合材料diy益智玩具',
                 badge: '',
-                coupon: '5元',
                 code: '59￥ CZ356 q6Dn5zZl5vs￥ https://m.tb.cn/h.RgqpiSi',
                 image: 'images/shop-mard-265.jpg',
                 url: 'https://s.click.taobao.com/xydIQMl'
@@ -277,7 +265,6 @@
             {
                 name: '按压自动点珠拼豆笔手diy套装全套具用神器充材料包玩具',
                 badge: '',
-                coupon: '',
                 code: '28￥ CZ028 pA1S5zZpJAN￥ https://m.tb.cn/h.R6H8TS4',
                 image: 'images/shop-bead-pen.jpg',
                 url: 'https://s.click.taobao.com/Os02QMl'
@@ -285,7 +272,6 @@
             {
                 name: '长钉拼豆板特大号画线款10452加厚耐高温防烫不掉不变形专用白色',
                 badge: '',
-                coupon: '20元',
                 code: '28￥ CZ225 xAjE5zZIUW7￥ https://m.tb.cn/h.RTO39gI',
                 image: 'images/shop-pegboard.jpg',
                 url: 'https://s.click.taobao.com/QB3NqCl'
@@ -293,7 +279,6 @@
             {
                 name: '十个勤天拼豆豆生日礼物女孩子儿童节玩具的女生小学生女孩子10岁',
                 badge: '',
-                coupon: '',
                 code: '79￥ HU591 DoEj5zZsAER￥ https://m.tb.cn/h.RTOe9yA',
                 image: 'images/shop-gift.jpg',
                 url: 'https://s.click.taobao.com/J5ZaPMl'
@@ -301,7 +286,6 @@
             {
                 name: '拼豆熨烫布格利特布料闪光烘焙布熨烫工具粗闪亮片纸手工diy毛巾',
                 badge: '',
-                coupon: '1元',
                 code: '68￥ HU287 HJfA5zZsun3￥ https://m.tb.cn/h.R6HNQaf',
                 image: 'images/shop-iron-cloth.jpg',
                 url: 'https://s.click.taobao.com/3lI9qCl'
@@ -309,7 +293,6 @@
             {
                 name: '拼豆豆手工diy材料包全套工具正版专用熨斗融合豆笔套装女孩玩具',
                 badge: '',
-                coupon: '8元',
                 code: '17￥ CZ356 CVK25zZurhf￥ https://m.tb.cn/h.R5Ci4LZ',
                 image: 'images/shop-tool-kit.jpg',
                 url: 'https://s.click.taobao.com/bcI0qCl'
@@ -324,7 +307,6 @@
                 <div class="shop-card fade-in">
                     <div class="shop-card-image">
                         ${p.badge ? `<span class="shop-badge">🔥 ${p.badge}</span>` : ''}
-                        ${p.coupon ? `<span class="shop-coupon">券${p.coupon}</span>` : ''}
                         ${p.image.startsWith("images/") ? "<img src=\"" + p.image + "\" alt=\"" + p.name + "\" style=\"width:100%;height:100%;object-fit:contain;background:#fff\">" : p.image}
                     </div>
                     <div class="shop-card-body">
