@@ -19,6 +19,7 @@ const SHARED = {
       { id: 'index',    label: '首页',     href: isIndex ? '#home' : 'index.html' },
       { id: 'generator',label: '生成器',   href: isIndex ? '#generator' : 'index.html#generator' },
       { id: 'create',   label: '创作',     href: 'create.html' },
+      { id: 'shop',     label: '购物',     href: 'shop.html' },
       { id: 'colors',   label: '色卡',     href: 'colors.html' },
       { id: 'about',    label: '拼豆历史', href: 'about.html' },
       { id: 'library',  label: '素材库',   href: 'library.html' },

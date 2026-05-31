@@ -2079,4 +2079,76 @@ body {
     .about-page .timeline-title h1 {
         font-size: 1.5rem;
     }
+
+    /* 色样文字在手机上可读 */
+    .color-swatch .hex-code {
+        font-size: 8px;
+    }
+    .color-swatch .bead-count {
+        font-size: 6px;
+    }
+    /* 选择框防止溢出 */
+    .control-group select {
+        max-width: 120px;
+        font-size: 0.8rem;
+    }
+    .control-group input[type="number"] {
+        width: 45px;
+    }
+    /* 特色卡片手机优化 */
+    .feature-card {
+        padding: 24px 16px;
+    }
+    .feature-card h3 {
+        font-size: 1.1rem;
+    }
+    .feature-card p {
+        font-size: 0.85rem;
+    }
+    .feature-icon {
+        font-size: 2.5rem;
+        margin-bottom: 12px;
+    }
+    /* 快速开始步骤手机优化 */
+    .quick-start-container {
+        padding: 24px 14px;
+    }
+    .quick-start-header h2 {
+        font-size: 1.3rem;
+    }
+    .quick-start-header p {
+        font-size: 0.9rem;
+    }
+    .step-card h4 {
+        font-size: 1rem;
+    }
+    .step-card p {
+        font-size: 0.82rem;
+    }
+    /* 首页 About 区块手机优化 */
+    .about-section {
+        padding: 40px 14px;
+    }
+    .about-container h2 {
+        font-size: 1.5rem;
+    }
+    .about-container > p {
+        font-size: 0.85rem;
+    }
+    .about-card {
+        padding: 16px;
+    }
+    .about-card h3 {
+        font-size: 1rem;
+    }
+    .about-card li {
+        font-size: 0.85rem;
+    }
+    /* 页脚手机优化 */
+    .footer {
+        padding: 16px 14px;
+    }
+    .footer p {
+        font-size: 0.75rem;
+    }
 }
