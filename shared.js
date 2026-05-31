@@ -88,20 +88,23 @@ const SHARED = {
     <\/script>`;
   },
 
-  /** 注入导航栏到 #navbar-placeholder，并初始化汉堡菜单 */
+  /** 注入导航栏到 #navbar-placeholder */
   initNavbar() {
     const placeholder = document.getElementById('navbar-placeholder');
     if (!placeholder) return;
     placeholder.innerHTML = this.getNavbarHTML();
+  },
 
-    const toggle = document.getElementById('navToggle');
-    const menu = document.querySelector('.nav-menu');
-    if (toggle && menu) {
-      toggle.addEventListener('click', () => {
-        const expanded = menu.classList.toggle('active');
-        toggle.setAttribute('aria-expanded', expanded);
-      });
-    }
+  /** 移动端汉堡菜单：全局事件委托，避免被页面其他元素拦截 */
+  initNavToggle() {
+    document.addEventListener('click', (e) => {
+      const toggle = e.target.closest('#navToggle');
+      if (!toggle) return;
+      const menu = document.querySelector('.nav-menu');
+      if (!menu) return;
+      const expanded = menu.classList.toggle('active');
+      toggle.setAttribute('aria-expanded', expanded);
+    });
   },
 
   /** 注入页脚到 #footer-placeholder */
@@ -121,6 +124,7 @@ const SHARED = {
   /** 一键初始化所有 */
   initAll() {
     this.initNavbar();
+    this.initNavToggle();
     this.initFooter();
     this.initAnalytics();
   }
