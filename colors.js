@@ -277,7 +277,7 @@ const palettes = {
     },
     artkalMini: {
         name: 'Artkal Mini',
-        info: 'Artkal Mini 是 2.6mm 小颗豆版本，共 220 色——尺寸是标准 5mm 中豆的一半，适合高精度细节作品和小型周边制作。',
+        info: 'Artkal Mini 是 2.6mm 小颗豆版本，共 207 色——尺寸是标准 5mm 中豆的一半，适合高精度细节作品和小型周边制作。',
         series: {
             MA: { name: '黄橙系', icon: 'MA', color: '#FFA80C', colors: [
                 {name:'MA1',hex:'#FFF6D4'},{name:'MA2',hex:'#F6F9E5'},{name:'MA3',hex:'#FFFBAA'},{name:'MA4',hex:'#FFDF58'},{name:'MA5',hex:'#FECF4D'},
