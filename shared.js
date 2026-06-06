@@ -64,29 +64,6 @@ const SHARED = {
     </footer>`;
   },
 
-  /** 统计代码 HTML (百度 + Google) */
-  getAnalyticsHTML() {
-    return `
-    <!-- 百度统计 -->
-    <script>
-    var _hmt = _hmt || [];
-    (function() {
-      var hm = document.createElement("script");
-      hm.src = "https://hm.baidu.com/hm.js?d222a52a2278471724ac0e485cc182ec";
-      var s = document.getElementsByTagName("script")[0];
-      s.parentNode.insertBefore(hm, s);
-    })();
-    <\/script>
-    <!-- Google tag (gtag.js) -->
-    <meta name="baidu-site-verification" content="codeva-eEiOyMiFJh" />
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-6CF7YT06DK"><\/script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-6CF7YT06DK');
-    <\/script>`;
-  },
 
   /** 注入导航栏到 #navbar-placeholder */
   initNavbar() {
@@ -114,11 +91,38 @@ const SHARED = {
     placeholder.innerHTML = this.getFooterHTML();
   },
 
-  /** 注入统计代码到 #analytics-placeholder */
+  /** 注入统计代码到 <head>（百度统计已直接写在各 HTML 的 <head> 中） */
   initAnalytics() {
-    const placeholder = document.getElementById('analytics-placeholder');
-    if (!placeholder) return;
-    placeholder.innerHTML = this.getAnalyticsHTML();
+    const scripts = [];
+    scripts.push({
+      type: 'google',
+      src: 'https://www.googletagmanager.com/gtag/js?id=G-6CF7YT06DK'
+    });
+    scripts.push({
+      type: 'google-config',
+      code: `window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-6CF7YT06DK');`
+    });
+
+    // meta: baidu-site-verification
+    const meta = document.createElement('meta');
+    meta.name = 'baidu-site-verification';
+    meta.content = 'codeva-eEiOyMiFJh';
+    document.head.appendChild(meta);
+
+    for (const s of scripts) {
+      const el = document.createElement('script');
+      if (s.src) {
+        el.src = s.src;
+        el.async = true;
+      }
+      if (s.code) {
+        el.textContent = s.code;
+      }
+      document.head.appendChild(el);
+    }
   },
 
   /** 一键初始化所有 */

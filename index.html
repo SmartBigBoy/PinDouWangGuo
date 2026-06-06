@@ -66,8 +66,16 @@
     <meta property="og:image:height" content="630">
     <meta name="twitter:image" content="https://pindou.skin/images/og-preview.png">
 
-    <!-- 统计代码 (由 shared.js 注入) -->
-    <div id="analytics-placeholder"></div>
+    <!-- 百度统计 -->
+    <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?d222a52a2278471724ac0e485cc182ec";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+    </script>
 </head>
 <body>
     <!-- 导航栏 (由 shared.js 注入) -->
@@ -330,7 +338,7 @@
 
     <div id="toast" style="display: none;">消息提示</div>
 
-    <script src="shared.js"></script>
+    <script src="shared.js" defer></script>
     <script src="colors.js" defer></script>
     <script src="script.js" defer></script>
 </body>
