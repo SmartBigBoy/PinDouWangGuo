@@ -734,7 +734,7 @@ class PixelArtGenerator {
         const fullscreenBtn = document.getElementById('fullscreenTitleBtn');
         const wrapper = destCanvas.parentElement;
         if (fullscreenBtn) {
-            fullscreenBtn.style.display = 'inline-flex';
+            fullscreenBtn.style.display = ''; // 确保可见
 
             const isFS = () =>
                 document.fullscreenElement || document.webkitFullscreenElement;
@@ -1413,8 +1413,6 @@ class PixelArtGenerator {
         this.colorPalette.innerHTML = '<p class="placeholder">颜色将在这里显示</p>';
         this.downloadPureBtn.disabled = true;
         this.downloadFullBtn.disabled = true;
-        const fsBtn = document.getElementById('fullscreenTitleBtn');
-        if (fsBtn) fsBtn.style.display = 'none';
 
         if (this.statsSection) {
             this.statsSection.style.display = 'none';
