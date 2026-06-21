@@ -293,6 +293,7 @@ class PixelArtGenerator {
                 this.beadCountMap.clear();
                 this.drawPixelArt(ctx, pixels, colors, gridSize.width, gridSize.height, pixelSize, showGrid, this.highlightColor);
 
+                this.currentColors = colors;
                 this.showPixelArt(canvas, gridSize.width, gridSize.height, pixelSize, coordSize);
                 this.showColorPalette(colors);
                 this._calcBoundingBox();
@@ -302,7 +303,6 @@ class PixelArtGenerator {
                 this.pixelCanvas = canvas;
                 this.downloadPureBtn.disabled = false;
                 this.downloadFullBtn.disabled = false;
-                this.currentColors = colors;
                 this.enableExportButton();
             } catch (error) {
                 console.error('生成图纸出错:', error);
@@ -724,21 +724,29 @@ class PixelArtGenerator {
             <div class="pixel-canvas-wrapper" style="position: relative; display: inline-block;">
                 <canvas id="pixelatedCanvas" width="${canvas.width}" height="${canvas.height}" style="cursor: crosshair; display: block; image-rendering: pixelated; image-rendering: crisp-edges;"></canvas>
                 <div id="coordTooltip" style="position: absolute; background: rgba(26, 26, 46, 0.95); color: #f5f5f5; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; pointer-events: none; display: none; z-index: 100; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.2);"></div>
+                <div class="fs-color-bar" id="fsColorBar">
+                    <button class="fs-btn" id="fsPrev">◀</button>
+                    <div class="fs-color-info">
+                        <span class="fs-color-dot" id="fsColorDot"></span>
+                        <span class="fs-color-label" id="fsColorLabel">全部颜色</span>
+                    </div>
+                    <button class="fs-btn" id="fsNext">▶</button>
+                    <button class="fs-btn fs-all" id="fsAll">全部</button>
+                    <span class="fs-color-index" id="fsColorIndex"></span>
+                </div>
             </div>
         `;
         const destCanvas = document.getElementById('pixelatedCanvas');
         const tooltip = document.getElementById('coordTooltip');
         destCanvas.getContext('2d').drawImage(canvas, 0, 0);
 
-        // 全屏 —— 使用标题栏按钮，不受画布滚动影响
+        // 全屏 —— 标题栏按钮
         const fullscreenBtn = document.getElementById('fullscreenTitleBtn');
         const wrapper = destCanvas.parentElement;
         if (fullscreenBtn) {
-            fullscreenBtn.style.display = ''; // 确保可见
-
+            fullscreenBtn.style.display = '';
             const isFS = () =>
                 document.fullscreenElement || document.webkitFullscreenElement;
-
             const requestFS = () => {
                 const fn = wrapper.requestFullscreen || wrapper.webkitRequestFullscreen;
                 if (fn) return fn.call(wrapper);
@@ -748,29 +756,116 @@ class PixelArtGenerator {
                 const fn = document.exitFullscreen || document.webkitExitFullscreen;
                 if (fn) fn.call(document);
             };
-
-            const toggle = () => {
-                if (isFS()) exitFS();
-                else requestFS();
-            };
-
+            const toggle = () => { if (isFS()) exitFS(); else requestFS(); };
             fullscreenBtn.onclick = toggle;
             destCanvas.ondblclick = toggle;
-
             const updateBtn = () => {
                 const inFs = isFS();
                 fullscreenBtn.innerHTML = inFs ? '✕ 退出' : '⛶ 全屏';
                 fullscreenBtn.title = inFs ? '退出全屏' : '全屏查看';
             };
-
             document.addEventListener('fullscreenchange', updateBtn);
             document.addEventListener('webkitfullscreenchange', updateBtn);
         }
 
+        // ========== 逐色导航（全屏底部） ==========
+        const usedColors = (self.currentColors || [])
+            .map(c => ({ ...c, count: self.beadCountMap.get(c.hex) || 0 }))
+            .filter(c => c.count > 0)
+            .sort((a, b) => b.count - a.count);
+
+        let colorIndex = -1; // -1 = 显示全部
+
+        // 核心重绘函数（提取自 handleCellClick）
+        function redrawWithHighlight(hexColor) {
+            self.highlightColor = hexColor || null;
+            const ctx = destCanvas.getContext('2d');
+            ctx.clearRect(0, 0, destCanvas.width, destCanvas.height);
+            self._drawGridBase(ctx, width, height, pixelSize, coordSize);
+
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const pixel = self.pixelData[y][x];
+                    const isEmpty = pixel.isEmpty || false;
+                    const isHL = hexColor && pixel.color.hex === hexColor;
+
+                    if (isEmpty) {
+                        ctx.fillStyle = '#f5f5f5';
+                        ctx.strokeStyle = '#e0e0e0';
+                        ctx.lineWidth = 0.5;
+                    } else if (hexColor) {
+                        ctx.fillStyle = isHL ? pixel.color.hex : '#ffffff';
+                        ctx.strokeStyle = isHL ? pixel.color.hex : '#e0e0e0';
+                        ctx.lineWidth = isHL ? 1.5 : 0.5;
+                    } else {
+                        ctx.fillStyle = pixel.color.hex;
+                        ctx.strokeStyle = '#e0e0e0';
+                        ctx.lineWidth = 0.5;
+                    }
+                    ctx.fillRect(coordSize + x * pixelSize, coordSize + y * pixelSize, pixelSize - 1, pixelSize - 1);
+                    ctx.strokeRect(coordSize + x * pixelSize, coordSize + y * pixelSize, pixelSize - 1, pixelSize - 1);
+                }
+            }
+
+            if (hexColor) {
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        if (self.pixelData[y][x].color.hex === hexColor) {
+                            ctx.strokeStyle = hexColor;
+                            ctx.lineWidth = 3;
+                            ctx.shadowColor = hexColor;
+                            ctx.shadowBlur = 8;
+                            ctx.strokeRect(coordSize + x * pixelSize + 1, coordSize + y * pixelSize + 1, pixelSize - 3, pixelSize - 3);
+                            ctx.shadowBlur = 0;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 更新底部导航栏
+        function updateColorBar() {
+            const dot = document.getElementById('fsColorDot');
+            const label = document.getElementById('fsColorLabel');
+            const index = document.getElementById('fsColorIndex');
+            if (colorIndex >= 0 && colorIndex < usedColors.length) {
+                const c = usedColors[colorIndex];
+                dot.style.background = c.hex;
+                dot.style.borderColor = c.hex;
+                label.textContent = `${c.name} · ${c.count}颗`;
+                index.textContent = `${colorIndex + 1}/${usedColors.length}`;
+            } else {
+                dot.style.background = 'transparent';
+                dot.style.borderColor = 'rgba(255,255,255,0.3)';
+                label.textContent = '全部颜色';
+                index.textContent = `${usedColors.length}色`;
+            }
+        }
+
+        // 绑定导航按钮
+        if (usedColors.length > 0) {
+            document.getElementById('fsPrev').onclick = () => {
+                colorIndex = colorIndex < 0 ? 0 : (colorIndex - 1 + usedColors.length) % usedColors.length;
+                updateColorBar();
+                redrawWithHighlight(usedColors[colorIndex].hex);
+            };
+            document.getElementById('fsNext').onclick = () => {
+                colorIndex = colorIndex < 0 ? 0 : (colorIndex + 1) % usedColors.length;
+                updateColorBar();
+                redrawWithHighlight(usedColors[colorIndex].hex);
+            };
+            document.getElementById('fsAll').onclick = () => {
+                colorIndex = -1;
+                updateColorBar();
+                redrawWithHighlight(null);
+            };
+        }
+        updateColorBar();
+
+        // ========== 鼠标 / 触控坐标提示 + 点击高亮 ==========
         let lastHoveredCell = null;
         let touchStartX = 0, touchStartY = 0;
 
-        // 鼠标/触控 → 网格坐标转换
         function getGridFromEvent(clientX, clientY) {
             const rect = destCanvas.getBoundingClientRect();
             const scaleX = destCanvas.width / rect.width;
@@ -794,15 +889,11 @@ class PixelArtGenerator {
                     const pixelInfo = self.pixelData[gridY]?.[gridX];
                     const colorHex = pixelInfo?.color?.hex || '#cccccc';
                     const colorName = pixelInfo?.color?.name || '未填充';
-
                     tooltip.innerHTML = `<span style="color: ${colorHex}; font-size: 14px;">●</span> 坐标: (${gridX + 1}, ${gridY + 1}) | ${colorName}`;
-
                     let tooltipX = offsetX + 15;
                     let tooltipY = offsetY - 30;
-
                     if (tooltipX + 200 > rect.width) tooltipX = offsetX - 180;
                     if (tooltipY < 0) tooltipY = offsetY + 15;
-
                     tooltip.style.left = tooltipX + 'px';
                     tooltip.style.top = tooltipY + 'px';
                     tooltip.style.display = 'block';
@@ -816,99 +907,35 @@ class PixelArtGenerator {
         function handleCellClick(gridX, gridY) {
             if (gridX >= 0 && gridX < width && gridY >= 0 && gridY < height) {
                 const clickedColorHex = self.pixelData[gridY]?.[gridX]?.color?.hex;
-
                 if (clickedColorHex) {
                     if (self.highlightColor === clickedColorHex) {
-                         self.highlightColor = null;
-                         showToast('已取消高亮，显示全图');
-                     } else {
-                         self.highlightColor = clickedColorHex;
-                         showToast(`已高亮: ${clickedColorHex}`);
-                     }
-
-                    const ctx = destCanvas.getContext('2d');
-                    ctx.clearRect(0, 0, destCanvas.width, destCanvas.height);
-
-                    self._drawGridBase(ctx, width, height, pixelSize, coordSize);
-
-                    for (let y = 0; y < height; y++) {
-                        for (let x = 0; x < width; x++) {
-                            const pixel = self.pixelData[y][x];
-                            const pixelColor = pixel.color;
-                            const isEmpty = pixel.isEmpty || false;
-                            const isHighlighted = self.highlightColor && pixelColor.hex === self.highlightColor;
-
-                            if (isEmpty) {
-                                ctx.fillStyle = '#f5f5f5';
-                                ctx.strokeStyle = '#e0e0e0';
-                                ctx.lineWidth = 0.5;
-                            } else if (self.highlightColor) {
-                                ctx.fillStyle = isHighlighted ? pixelColor.hex : '#ffffff';
-                                ctx.strokeStyle = isHighlighted ? pixelColor.hex : '#e0e0e0';
-                                ctx.lineWidth = isHighlighted ? 1.5 : 0.5;
-                            } else {
-                                ctx.fillStyle = pixelColor.hex;
-                                ctx.strokeStyle = '#e0e0e0';
-                                ctx.lineWidth = 0.5;
-                            }
-
-                            ctx.fillRect(
-                                coordSize + x * pixelSize,
-                                coordSize + y * pixelSize,
-                                pixelSize - 1,
-                                pixelSize - 1
-                            );
-
-                            ctx.strokeRect(
-                                coordSize + x * pixelSize,
-                                coordSize + y * pixelSize,
-                                pixelSize - 1,
-                                pixelSize - 1
-                            );
-                         }
-                     }
-
-                    if (self.highlightColor) {
-                    for (let y = 0; y < height; y++) {
-                            for (let x = 0; x < width; x++) {
-                                if (self.pixelData[y][x].color.hex === self.highlightColor) {
-                                    const color = self.pixelData[y][x].color;
-                                    ctx.strokeStyle = color.hex;
-                                    ctx.lineWidth = 3;
-                                    ctx.shadowColor = color.hex;
-                                    ctx.shadowBlur = 8;
-                                    ctx.strokeRect(
-                                        coordSize + x * pixelSize + 1,
-                                        coordSize + y * pixelSize + 1,
-                                        pixelSize - 3,
-                                        pixelSize - 3
-                                    );
-                                    ctx.shadowBlur = 0;
-                                }
-                            }
-                        }
+                        colorIndex = -1;
+                        updateColorBar();
+                        redrawWithHighlight(null);
+                        showToast('已取消高亮，显示全图');
+                    } else {
+                        colorIndex = usedColors.findIndex(c => c.hex === clickedColorHex);
+                        if (colorIndex < 0) colorIndex = 0;
+                        updateColorBar();
+                        redrawWithHighlight(clickedColorHex);
+                        showToast(`已高亮: ${clickedColorHex}`);
                     }
                 }
             }
         }
 
-        // 鼠标事件
         destCanvas.addEventListener('mousemove', (e) => {
             const { gridX, gridY, offsetX, offsetY, rect } = getGridFromEvent(e.clientX, e.clientY);
             updateTooltip(gridX, gridY, offsetX, offsetY, rect);
         });
-
         destCanvas.addEventListener('mouseleave', () => {
             tooltip.style.display = 'none';
             lastHoveredCell = null;
         });
-
         destCanvas.addEventListener('click', (e) => {
             const { gridX, gridY } = getGridFromEvent(e.clientX, e.clientY);
             handleCellClick(gridX, gridY);
         });
-
-        // 触控事件
         destCanvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             const touch = e.touches[0];
@@ -917,18 +944,15 @@ class PixelArtGenerator {
             const { gridX, gridY, offsetX, offsetY, rect } = getGridFromEvent(touch.clientX, touch.clientY);
             updateTooltip(gridX, gridY, offsetX, offsetY, rect);
         }, { passive: false });
-
         destCanvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
             const touch = e.touches[0];
             const { gridX, gridY, offsetX, offsetY, rect } = getGridFromEvent(touch.clientX, touch.clientY);
             updateTooltip(gridX, gridY, offsetX, offsetY, rect);
         }, { passive: false });
-
         destCanvas.addEventListener('touchend', (e) => {
             e.preventDefault();
             tooltip.style.display = 'none';
-            // 只在 touchstart/touchend 距离较小时视为点击（防误触）
             if (Math.hypot(touchStartX - (e.changedTouches[0]?.clientX || 0),
                           touchStartY - (e.changedTouches[0]?.clientY || 0)) < 15) {
                 const { gridX, gridY } = getGridFromEvent(touchStartX, touchStartY);

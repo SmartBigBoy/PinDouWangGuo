@@ -517,6 +517,99 @@ body {
     box-shadow: 0 3px 10px rgba(102, 126, 234, 0.35);
 }
 
+/* ===== Fullscreen color navigation bar (底部逐色导航) ===== */
+.fs-color-bar {
+    display: none;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 0 16px;
+    z-index: 20;
+    box-sizing: border-box;
+}
+
+.pixel-canvas-wrapper:fullscreen .fs-color-bar,
+.pixel-canvas-wrapper:-webkit-full-screen .fs-color-bar {
+    display: flex;
+}
+
+.fs-btn {
+    background: rgba(255, 255, 255, 0.12);
+    border: none;
+    color: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 15px;
+    padding: 8px 14px;
+    transition: background 0.2s;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
+}
+.fs-btn:hover { background: rgba(255, 255, 255, 0.22); }
+.fs-btn:disabled { opacity: 0.3; cursor: default; }
+
+.fs-color-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 160px;
+    justify-content: center;
+}
+
+.fs-color-dot {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+
+.fs-color-label {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.fs-all {
+    background: rgba(255, 255, 255, 0.18);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 16px;
+}
+.fs-all:hover { background: rgba(255, 255, 255, 0.3); }
+
+.fs-color-index {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 12px;
+    font-weight: 500;
+    min-width: 40px;
+    text-align: center;
+}
+
+/* Tablet / touch: larger bar */
+@media (hover: none) and (pointer: coarse) {
+    .fs-color-bar { height: 64px; gap: 8px; padding: 0 12px; }
+    .fs-btn { font-size: 18px; min-width: 48px; min-height: 48px; padding: 10px; }
+    .fs-color-dot { width: 32px; height: 32px; }
+    .fs-color-label { font-size: 15px; }
+    .fs-all { font-size: 14px; padding: 10px 18px; }
+}
+
 /* ===== Fullscreen mode on pixel-canvas-wrapper ===== */
 .pixel-canvas-wrapper:fullscreen {
     width: 100vw;
@@ -525,7 +618,7 @@ body {
     display: flex !important;
     align-items: center;
     justify-content: center;
-    padding: 24px;
+    padding: 24px 24px 88px;
 }
 
 .pixel-canvas-wrapper:fullscreen canvas {
@@ -558,7 +651,7 @@ body {
     display: flex !important;
     align-items: center;
     justify-content: center;
-    padding: 24px;
+    padding: 24px 24px 88px;
 }
 
 .pixel-canvas-wrapper:-webkit-full-screen canvas {
