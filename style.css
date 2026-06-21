@@ -504,22 +504,24 @@ body {
     position: absolute;
     top: 8px;
     right: 8px;
-    width: 36px;
-    height: 36px;
     border: none;
     border-radius: 8px;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.55);
     color: #fff;
-    font-size: 18px;
+    font-size: 13px;
+    font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 4px;
+    padding: 6px 12px;
     opacity: 0;
     transition: opacity 0.2s ease, background 0.2s ease;
     z-index: 10;
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
+    font-family: inherit;
 }
 
 .pixel-canvas-wrapper:hover .fullscreen-btn,
@@ -528,7 +530,7 @@ body {
 }
 
 .fullscreen-btn:hover {
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.75);
 }
 
 /* ===== Fullscreen mode ===== */
@@ -555,9 +557,8 @@ body {
 .pixel-canvas-wrapper:fullscreen .fullscreen-btn {
     opacity: 1;
     background: rgba(255, 255, 255, 0.15);
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
+    font-size: 15px;
+    padding: 8px 16px;
     border-radius: 10px;
 }
 
@@ -1779,8 +1780,8 @@ body {
     .fullscreen-btn {
         opacity: 1;
         background: rgba(0, 0, 0, 0.4);
-        width: 40px;
-        height: 40px;
+        padding: 8px 14px;
+        font-size: 14px;
     }
     .btn {
         min-height: 44px;

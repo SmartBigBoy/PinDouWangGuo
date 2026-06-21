@@ -723,7 +723,7 @@ class PixelArtGenerator {
         this.pixelatedContainer.innerHTML = `
             <div class="pixel-canvas-wrapper" style="position: relative; display: inline-block;">
                 <canvas id="pixelatedCanvas" width="${canvas.width}" height="${canvas.height}" style="cursor: crosshair; display: block; image-rendering: pixelated; image-rendering: crisp-edges;"></canvas>
-                <button class="fullscreen-btn" id="fullscreenBtn" title="全屏查看" aria-label="全屏查看拼豆效果">⛶</button>
+                <button class="fullscreen-btn" id="fullscreenBtn" title="全屏查看" aria-label="全屏查看拼豆效果">⛶ 全屏</button>
                 <div id="coordTooltip" style="position: absolute; background: rgba(26, 26, 46, 0.95); color: #f5f5f5; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; pointer-events: none; display: none; z-index: 100; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.2);"></div>
             </div>
         `;
@@ -732,23 +732,55 @@ class PixelArtGenerator {
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         destCanvas.getContext('2d').drawImage(canvas, 0, 0);
 
-        // 全屏切换
+        // 全屏切换 —— 兼容 WebKit (Safari) 前缀
         const wrapper = destCanvas.parentElement;
+        const isFullscreen = () =>
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.mozFullScreenElement ||
+            document.msFullscreenElement;
+
+        const requestFs = (el) => {
+            const fn = el.requestFullscreen || el.webkitRequestFullscreen
+                     || el.mozRequestFullScreen || el.msRequestFullscreen;
+            if (fn) return fn.call(el);
+            showToast('当前浏览器不支持全屏', 'error');
+        };
+
+        const exitFs = () => {
+            const fn = document.exitFullscreen || document.webkitExitFullscreen
+                     || document.mozCancelFullScreen || document.msExitFullscreen;
+            if (fn) fn.call(document);
+        };
+
         const toggleFullscreen = () => {
-            if (document.fullscreenElement) {
-                document.exitFullscreen();
+            if (isFullscreen()) {
+                exitFs();
             } else {
-                wrapper.requestFullscreen();
+                requestFs(wrapper).catch(err => {
+                    showToast('全屏被拦截，请允许全屏请求', 'error');
+                });
             }
         };
+
         fullscreenBtn.addEventListener('click', toggleFullscreen);
-        // 双击 canvas 也触发全屏
         destCanvas.addEventListener('dblclick', toggleFullscreen);
-        // 全屏变化时更新按钮文字
-        document.addEventListener('fullscreenchange', () => {
-            fullscreenBtn.textContent = document.fullscreenElement ? '✕' : '⛶';
-            fullscreenBtn.title = document.fullscreenElement ? '退出全屏' : '全屏查看';
-        });
+
+        // 全屏变化时更新按钮（只绑定一次，避免重复）
+        const onFsChange = () => {
+            if (!fullscreenBtn) return;
+            if (isFullscreen()) {
+                fullscreenBtn.innerHTML = '✕ 退出';
+                fullscreenBtn.title = '退出全屏';
+            } else {
+                fullscreenBtn.innerHTML = '⛶ 全屏';
+                fullscreenBtn.title = '全屏查看';
+            }
+        };
+        document.removeEventListener('fullscreenchange', onFsChange);
+        document.addEventListener('fullscreenchange', onFsChange);
+        document.removeEventListener('webkitfullscreenchange', onFsChange);
+        document.addEventListener('webkitfullscreenchange', onFsChange);
 
         let lastHoveredCell = null;
         let touchStartX = 0, touchStartY = 0;
