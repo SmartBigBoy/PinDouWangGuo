@@ -722,13 +722,33 @@ class PixelArtGenerator {
         const self = this;
         this.pixelatedContainer.innerHTML = `
             <div class="pixel-canvas-wrapper" style="position: relative; display: inline-block;">
-                <canvas id="pixelatedCanvas" width="${canvas.width}" height="${canvas.height}" style="cursor: crosshair; display: block;"></canvas>
+                <canvas id="pixelatedCanvas" width="${canvas.width}" height="${canvas.height}" style="cursor: crosshair; display: block; image-rendering: pixelated; image-rendering: crisp-edges;"></canvas>
+                <button class="fullscreen-btn" id="fullscreenBtn" title="全屏查看" aria-label="全屏查看拼豆效果">⛶</button>
                 <div id="coordTooltip" style="position: absolute; background: rgba(26, 26, 46, 0.95); color: #f5f5f5; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; pointer-events: none; display: none; z-index: 100; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.2);"></div>
             </div>
         `;
         const destCanvas = document.getElementById('pixelatedCanvas');
         const tooltip = document.getElementById('coordTooltip');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
         destCanvas.getContext('2d').drawImage(canvas, 0, 0);
+
+        // 全屏切换
+        const wrapper = destCanvas.parentElement;
+        const toggleFullscreen = () => {
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else {
+                wrapper.requestFullscreen();
+            }
+        };
+        fullscreenBtn.addEventListener('click', toggleFullscreen);
+        // 双击 canvas 也触发全屏
+        destCanvas.addEventListener('dblclick', toggleFullscreen);
+        // 全屏变化时更新按钮文字
+        document.addEventListener('fullscreenchange', () => {
+            fullscreenBtn.textContent = document.fullscreenElement ? '✕' : '⛶';
+            fullscreenBtn.title = document.fullscreenElement ? '退出全屏' : '全屏查看';
+        });
 
         let lastHoveredCell = null;
         let touchStartX = 0, touchStartY = 0;
