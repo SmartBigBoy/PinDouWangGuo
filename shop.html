@@ -224,12 +224,19 @@
             font-size: 0.82rem;
             line-height: 1.8;
         }
+        @media (max-width: 900px) {
+            .shop-page .container { padding: 90px 18px 30px; }
+            .shop-card-image { height: 160px; }
+            .shop-card-body { padding: 18px; }
+            .shop-code-row { min-height: 44px; }
+            .shop-btn { min-height: 44px; padding: 14px; }
+        }
+
         @media (max-width: 640px) {
             .shop-page .container { padding: 80px 14px 30px; }
             .shop-card-image { height: 150px; font-size: 3rem; }
             .shop-page .page-header h1 { font-size: 1.5rem; }
             .shop-grid { grid-template-columns: 1fr; }
-            .shop-card-image { height: 150px; font-size: 3rem; }
             .shop-card-body { padding: 16px; }
             .shop-card-body h3 { font-size: 0.9rem; }
             .shop-code-row { padding: 8px 10px; }

@@ -265,7 +265,7 @@
         }
         .canvas-tip span { font-size: 3rem; display: block; margin-bottom: 10px; }
 
-        /* ===== 响应式: 平板 ===== */
+        /* ===== 响应式: 平板横向 ===== */
         @media (max-width: 1024px) {
             .create-wrapper {
                 flex-direction: column;
@@ -289,6 +289,44 @@
             .create-canvas-area {
                 min-height: 50vh;
                 padding: 12px;
+            }
+
+            /* Tablet: bigger touch targets */
+            .tool-bar .tool-btn {
+                min-height: 48px;
+                font-size: 0.9rem;
+                padding: 10px 8px;
+            }
+            .settings-row select,
+            .settings-row input[type="number"] {
+                min-height: 40px;
+                font-size: 0.9rem;
+            }
+            .palette-grid .color-cell {
+                min-width: 36px;
+                min-height: 36px;
+            }
+            .import-area {
+                padding: 20px 12px;
+            }
+            .action-row .btn {
+                min-height: 44px;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* ===== 响应式: 平板纵向 / 小平板 ===== */
+        @media (max-width: 900px) {
+            .create-sidebar {
+                max-height: 40vh;
+            }
+            .palette-grid {
+                grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+                max-height: 130px;
+            }
+            .create-canvas-area {
+                min-height: 55vh;
+                padding: 10px;
             }
         }
 
