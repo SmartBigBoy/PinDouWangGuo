@@ -723,64 +723,49 @@ class PixelArtGenerator {
         this.pixelatedContainer.innerHTML = `
             <div class="pixel-canvas-wrapper" style="position: relative; display: inline-block;">
                 <canvas id="pixelatedCanvas" width="${canvas.width}" height="${canvas.height}" style="cursor: crosshair; display: block; image-rendering: pixelated; image-rendering: crisp-edges;"></canvas>
-                <button class="fullscreen-btn" id="fullscreenBtn" title="全屏查看" aria-label="全屏查看拼豆效果">⛶ 全屏</button>
                 <div id="coordTooltip" style="position: absolute; background: rgba(26, 26, 46, 0.95); color: #f5f5f5; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; pointer-events: none; display: none; z-index: 100; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.2);"></div>
             </div>
         `;
         const destCanvas = document.getElementById('pixelatedCanvas');
         const tooltip = document.getElementById('coordTooltip');
-        const fullscreenBtn = document.getElementById('fullscreenBtn');
         destCanvas.getContext('2d').drawImage(canvas, 0, 0);
 
-        // 全屏切换 —— 兼容 WebKit (Safari) 前缀
+        // 全屏 —— 使用标题栏按钮，不受画布滚动影响
+        const fullscreenBtn = document.getElementById('fullscreenTitleBtn');
         const wrapper = destCanvas.parentElement;
-        const isFullscreen = () =>
-            document.fullscreenElement ||
-            document.webkitFullscreenElement ||
-            document.mozFullScreenElement ||
-            document.msFullscreenElement;
+        if (fullscreenBtn) {
+            fullscreenBtn.style.display = 'inline-flex';
 
-        const requestFs = (el) => {
-            const fn = el.requestFullscreen || el.webkitRequestFullscreen
-                     || el.mozRequestFullScreen || el.msRequestFullscreen;
-            if (fn) return fn.call(el);
-            showToast('当前浏览器不支持全屏', 'error');
-        };
+            const isFS = () =>
+                document.fullscreenElement || document.webkitFullscreenElement;
 
-        const exitFs = () => {
-            const fn = document.exitFullscreen || document.webkitExitFullscreen
-                     || document.mozCancelFullScreen || document.msExitFullscreen;
-            if (fn) fn.call(document);
-        };
+            const requestFS = () => {
+                const fn = wrapper.requestFullscreen || wrapper.webkitRequestFullscreen;
+                if (fn) return fn.call(wrapper);
+                showToast('浏览器不支持全屏', 'error');
+            };
+            const exitFS = () => {
+                const fn = document.exitFullscreen || document.webkitExitFullscreen;
+                if (fn) fn.call(document);
+            };
 
-        const toggleFullscreen = () => {
-            if (isFullscreen()) {
-                exitFs();
-            } else {
-                requestFs(wrapper).catch(err => {
-                    showToast('全屏被拦截，请允许全屏请求', 'error');
-                });
-            }
-        };
+            const toggle = () => {
+                if (isFS()) exitFS();
+                else requestFS();
+            };
 
-        fullscreenBtn.addEventListener('click', toggleFullscreen);
-        destCanvas.addEventListener('dblclick', toggleFullscreen);
+            fullscreenBtn.onclick = toggle;
+            destCanvas.ondblclick = toggle;
 
-        // 全屏变化时更新按钮（只绑定一次，避免重复）
-        const onFsChange = () => {
-            if (!fullscreenBtn) return;
-            if (isFullscreen()) {
-                fullscreenBtn.innerHTML = '✕ 退出';
-                fullscreenBtn.title = '退出全屏';
-            } else {
-                fullscreenBtn.innerHTML = '⛶ 全屏';
-                fullscreenBtn.title = '全屏查看';
-            }
-        };
-        document.removeEventListener('fullscreenchange', onFsChange);
-        document.addEventListener('fullscreenchange', onFsChange);
-        document.removeEventListener('webkitfullscreenchange', onFsChange);
-        document.addEventListener('webkitfullscreenchange', onFsChange);
+            const updateBtn = () => {
+                const inFs = isFS();
+                fullscreenBtn.innerHTML = inFs ? '✕ 退出' : '⛶ 全屏';
+                fullscreenBtn.title = inFs ? '退出全屏' : '全屏查看';
+            };
+
+            document.addEventListener('fullscreenchange', updateBtn);
+            document.addEventListener('webkitfullscreenchange', updateBtn);
+        }
 
         let lastHoveredCell = null;
         let touchStartX = 0, touchStartY = 0;
@@ -1428,6 +1413,8 @@ class PixelArtGenerator {
         this.colorPalette.innerHTML = '<p class="placeholder">颜色将在这里显示</p>';
         this.downloadPureBtn.disabled = true;
         this.downloadFullBtn.disabled = true;
+        const fsBtn = document.getElementById('fullscreenTitleBtn');
+        if (fsBtn) fsBtn.style.display = 'none';
 
         if (this.statsSection) {
             this.statsSection.style.display = 'none';

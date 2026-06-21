@@ -494,46 +494,30 @@ body {
     image-rendering: crisp-edges;
 }
 
-/* ===== Fullscreen button overlay ===== */
-.pixel-canvas-wrapper {
-    position: relative;
-    display: inline-block;
-}
-
-.fullscreen-btn {
-    position: absolute;
-    top: 8px;
-    right: 8px;
+/* ===== Fullscreen title button (在「拼豆效果」标题旁) ===== */
+.fullscreen-title-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 10px;
+    padding: 4px 12px;
     border: none;
-    border-radius: 8px;
-    background: rgba(0, 0, 0, 0.55);
+    border-radius: 6px;
+    background: var(--bg-gradient);
     color: #fff;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    padding: 6px 12px;
-    opacity: 0;
-    transition: opacity 0.2s ease, background 0.2s ease;
-    z-index: 10;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    vertical-align: middle;
+    transition: all 0.2s ease;
     font-family: inherit;
 }
-
-.pixel-canvas-wrapper:hover .fullscreen-btn,
-.pixel-canvas-wrapper .fullscreen-btn:focus-visible {
-    opacity: 1;
+.fullscreen-title-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.35);
 }
 
-.fullscreen-btn:hover {
-    background: rgba(0, 0, 0, 0.75);
-}
-
-/* ===== Fullscreen mode ===== */
+/* ===== Fullscreen mode on pixel-canvas-wrapper ===== */
 .pixel-canvas-wrapper:fullscreen {
     width: 100vw;
     height: 100vh;
@@ -554,16 +538,16 @@ body {
     image-rendering: crisp-edges;
 }
 
-.pixel-canvas-wrapper:fullscreen .fullscreen-btn {
-    opacity: 1;
-    background: rgba(255, 255, 255, 0.15);
-    font-size: 15px;
-    padding: 8px 16px;
-    border-radius: 10px;
-}
-
-.pixel-canvas-wrapper:fullscreen .fullscreen-btn:hover {
-    background: rgba(255, 255, 255, 0.25);
+.pixel-canvas-wrapper:fullscreen::after {
+    content: '双击退出全屏';
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255,255,255,0.4);
+    font-size: 13px;
+    font-weight: 500;
+    pointer-events: none;
 }
 
 /* WebKit fullscreen vendor prefix */
@@ -587,8 +571,16 @@ body {
     image-rendering: crisp-edges;
 }
 
-.pixel-canvas-wrapper:-webkit-full-screen .fullscreen-btn {
-    opacity: 1;
+.pixel-canvas-wrapper:-webkit-full-screen::after {
+    content: '双击退出全屏';
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255,255,255,0.4);
+    font-size: 13px;
+    font-weight: 500;
+    pointer-events: none;
 }
 
 .primary-actions {
@@ -1775,13 +1767,11 @@ body {
     }
 }
 
-/* ===== Touch devices: bigger interactive areas + always show fullscreen btn ===== */
+/* ===== Touch devices: bigger interactive areas ===== */
 @media (hover: none) and (pointer: coarse) {
-    .fullscreen-btn {
-        opacity: 1;
-        background: rgba(0, 0, 0, 0.4);
-        padding: 8px 14px;
-        font-size: 14px;
+    .fullscreen-title-btn {
+        padding: 6px 14px;
+        font-size: 13px;
     }
     .btn {
         min-height: 44px;
