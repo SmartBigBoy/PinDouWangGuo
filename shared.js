@@ -60,8 +60,22 @@ const SHARED = {
                 <span class="brand-text">拼豆王国</span>
             </div>
             <p>© 2025 拼豆王国 | 使用时请确保图片版权合规</p>
+            <p><a href="#" id="donateBtn" class="donate-link">❤️ 支持作者</a></p>
         </div>
-    </footer>`;
+    </footer>
+
+    <!-- 捐款模态框 -->
+    <div id="donateModal" class="modal">
+        <div class="modal-content donate-modal">
+            <span class="modal-close" id="donateClose">&times;</span>
+            <h2>❤️ 支持作者</h2>
+            <p>如果这个工具对你有帮助，欢迎扫码支持！</p>
+            <div class="donate-qrcode">
+                <img src="images/wechat_donate.png" alt="微信收款码">
+            </div>
+            <p class="donate-tip">长按识别二维码转账</p>
+        </div>
+    </div>`;
   },
 
 
@@ -89,6 +103,34 @@ const SHARED = {
     const placeholder = document.getElementById('footer-placeholder');
     if (!placeholder) return;
     placeholder.innerHTML = this.getFooterHTML();
+    this.initDonateModal();
+  },
+
+  /** 初始化捐款模态框 */
+  initDonateModal() {
+    const modal = document.getElementById('donateModal');
+    const btn = document.getElementById('donateBtn');
+    const close = document.getElementById('donateClose');
+
+    if (!modal || !btn || !close) return;
+
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      modal.style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    });
+
+    close.addEventListener('click', () => {
+      modal.style.display = 'none';
+      document.body.style.overflow = '';
+    });
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+      }
+    });
   },
 
   /** 注入统计代码到 <head>（百度统计已直接写在各 HTML 的 <head> 中） */
