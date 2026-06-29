@@ -2234,7 +2234,7 @@ body {
 
 /* 捐赠卡片 */
 .donate-section {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #ff6b35 0%, #f7931e 50%, #ffcc00 100%);
     padding: 40px 20px;
     text-align: center;
     margin: 0;
@@ -2259,7 +2259,7 @@ body {
 
 .donate-btn {
     background: white;
-    color: #667eea;
+    color: #ff6b35;
     border: none;
     padding: 14px 32px;
     font-size: 1.1rem;
