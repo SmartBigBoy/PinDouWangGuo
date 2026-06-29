@@ -1706,6 +1706,57 @@ body {
     padding-left: 1.2rem;
 }
 
+/* ==================== Donate Section ==================== */
+
+.donate-section {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    margin-top: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    text-align: center;
+}
+
+.donate-header h3 {
+    color: var(--text-dark);
+    margin-bottom: 8px;
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.donate-header p {
+    color: var(--text-light);
+    font-size: 0.95rem;
+    margin-bottom: 20px;
+}
+
+.donate-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.donate-qr {
+    width: 180px;
+    height: 180px;
+    border-radius: 12px;
+    border: 2px solid var(--border-color);
+    object-fit: cover;
+    background: var(--bg-light);
+    transition: transform 0.3s ease;
+}
+
+.donate-qr:hover {
+    transform: scale(1.05);
+    border-color: var(--primary-color);
+}
+
+.donate-hint {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
 /* ==================== Responsive ==================== */
 
 @media (max-width: 1024px) {
