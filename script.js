@@ -642,20 +642,31 @@ class PixelArtGenerator {
                         fillColor = closestColor.hex;
                         gridColor = closestColor.hex;
                     } else if (highlightColor) {
-                        fillColor = '#ffffff';
-                        gridColor = '#ffffff';
+                        fillColor = closestColor.hex;
+                        gridColor = '#e0e0e0';
+                        ctx.globalAlpha = 0.25;
                     } else {
                         fillColor = closestColor.hex;
                     }
                 }
 
                 ctx.fillStyle = fillColor;
+                if (highlightColor && !isEmpty && closestColor.hex !== highlightColor) {
+                    ctx.globalAlpha = 0.25;
+                }
                 ctx.fillRect(coordSize + x * pixelSize, coordSize + y * pixelSize, pixelSize - 1, pixelSize - 1);
+                ctx.globalAlpha = 1.0;
 
                 if (showGrid) {
                     ctx.strokeStyle = gridColor;
                     ctx.lineWidth = highlightColor ? 1.5 : 0.5;
+                    if (highlightColor && !isEmpty && closestColor.hex === highlightColor) {
+                        ctx.globalAlpha = 1.0;
+                    } else if (highlightColor && !isEmpty) {
+                        ctx.globalAlpha = 0.2;
+                    }
                     ctx.strokeRect(coordSize + x * pixelSize, coordSize + y * pixelSize, pixelSize - 1, pixelSize - 1);
+                    ctx.globalAlpha = 1.0;
                 }
 
                 row.push({ color: closestColor, x, y, isEmpty });
@@ -793,19 +804,23 @@ class PixelArtGenerator {
                         ctx.fillStyle = '#f5f5f5';
                         ctx.strokeStyle = '#e0e0e0';
                         ctx.lineWidth = 0.5;
+                        ctx.globalAlpha = 1.0;
                     } else if (hexColor) {
-                        ctx.fillStyle = isHL ? pixel.color.hex : '#ffffff';
-                        ctx.strokeStyle = isHL ? pixel.color.hex : '#e0e0e0';
+                        ctx.fillStyle = pixel.color.hex;
+                        ctx.strokeStyle = isHL ? pixel.color.hex : '#d0d0d8';
                         ctx.lineWidth = isHL ? 1.5 : 0.5;
+                        ctx.globalAlpha = isHL ? 1.0 : 0.22;
                     } else {
                         ctx.fillStyle = pixel.color.hex;
                         ctx.strokeStyle = '#e0e0e0';
                         ctx.lineWidth = 0.5;
+                        ctx.globalAlpha = 1.0;
                     }
                     ctx.fillRect(coordSize + x * pixelSize, coordSize + y * pixelSize, pixelSize - 1, pixelSize - 1);
                     ctx.strokeRect(coordSize + x * pixelSize, coordSize + y * pixelSize, pixelSize - 1, pixelSize - 1);
                 }
             }
+            ctx.globalAlpha = 1.0;
 
             if (hexColor) {
                 for (let y = 0; y < height; y++) {
