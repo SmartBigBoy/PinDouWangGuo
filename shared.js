@@ -60,22 +60,11 @@ const SHARED = {
                 <span class="brand-text">拼豆王国</span>
             </div>
             <p>© 2025 拼豆王国 | 使用时请确保图片版权合规</p>
-            <p><a href="#" id="donateBtn" class="donate-link">❤️ 支持作者</a></p>
+      
         </div>
     </footer>
 
-    <!-- 捐款模态框 -->
-    <div id="donateModal" class="modal">
-        <div class="modal-content donate-modal">
-            <span class="modal-close" id="donateClose">&times;</span>
-            <h2>❤️ 支持作者</h2>
-            <p>如果这个工具对你有帮助，欢迎扫码支持！</p>
-            <div class="donate-qrcode">
-                <img src="images/wechat_donate.png" alt="微信收款码">
-            </div>
-            <p class="donate-tip">长按识别二维码转账</p>
-        </div>
-    </div>`;
+   `;
   },
 
 
