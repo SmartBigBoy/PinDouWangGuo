@@ -108,7 +108,7 @@
         }
 
         .palette-item.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--bg-gradient);
             color: white;
         }
 
@@ -116,7 +116,7 @@
             width: 36px;
             height: 36px;
             border-radius: 8px;
-            background: rgba(102, 126, 234, 0.1);
+            background: rgba(var(--primary-rgb), 0.1);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -163,8 +163,8 @@
         }
 
         .search-box:focus-within {
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
         }
 
         .search-icon {
@@ -189,7 +189,7 @@
         }
 
         #paletteIntro {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--bg-gradient);
             color: white;
             padding: 20px 24px;
             border-radius: 12px;
@@ -225,7 +225,7 @@
             align-items: center;
             margin-bottom: 16px;
             padding-left: 12px;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid var(--primary-color);
         }
 
         .color-series-title {
@@ -261,7 +261,7 @@
         .color-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-            border-color: rgba(102, 126, 234, 0.3);
+            border-color: rgba(244, 160, 184, 0.3);
         }
 
         .color-card-swatch {

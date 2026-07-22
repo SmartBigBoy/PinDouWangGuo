@@ -69,7 +69,7 @@ const palettes = {
                 {name:'M6',hex:'#B0A782'},{name:'M7',hex:'#B4A497'},{name:'M8',hex:'#B38281'},{name:'M9',hex:'#A58767'},{name:'M10',hex:'#C5B2BC'},
                 {name:'M11',hex:'#9F7594'},{name:'M12',hex:'#644749'},{name:'M13',hex:'#D19066'},{name:'M14',hex:'#C77362'},{name:'M15',hex:'#757D78'}
             ]},
-            P: { name: '扩展系', icon: 'P', color: '#667eea', colors: [
+            P: { name: '扩展系', icon: 'P', color: '#F4A0B8', colors: [
                 {name:'P1',hex:'#FCF7F8'},{name:'P2',hex:'#B0A9AC'},{name:'P3',hex:'#AFDCAB'},{name:'P4',hex:'#FEA49F'},{name:'P5',hex:'#EE8C3E'},
                 {name:'P6',hex:'#5FD0A7'},{name:'P7',hex:'#EB9270'},{name:'P8',hex:'#F0D958'},{name:'P9',hex:'#D9D9D9'},{name:'P10',hex:'#D9C7EA'},
                 {name:'P11',hex:'#F3ECC9'},{name:'P12',hex:'#E6EEF2'},{name:'P13',hex:'#AACBEF'},{name:'P14',hex:'#337680'},{name:'P15',hex:'#668575'},

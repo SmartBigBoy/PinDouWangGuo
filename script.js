@@ -127,10 +127,12 @@ class PixelArtGenerator {
 
         this.pixelSizeSlider.addEventListener('input', (e) => {
             this.pixelSizeValue.textContent = e.target.value;
+            this.scheduleAutoGenerate();
         });
 
         this.colorCountSlider.addEventListener('input', (e) => {
             this.colorCountValue.textContent = e.target.value;
+            this.scheduleAutoGenerate();
         });
 
         if (this.paletteSelect) {
@@ -138,7 +140,7 @@ class PixelArtGenerator {
                 const palette = e.target.value;
                 const maxColors = this.getPaletteColorCount(palette);
                 this.colorCountSlider.max = maxColors;
-                
+
                 const currentValue = parseInt(this.colorCountSlider.value);
                 if (currentValue > maxColors) {
                     this.colorCountSlider.value = maxColors;
@@ -146,24 +148,36 @@ class PixelArtGenerator {
                 } else {
                     this.colorCountValue.textContent = currentValue;
                 }
+                this.scheduleAutoGenerate();
             });
         }
 
         this.gridSizeSelect.addEventListener('change', (e) => {
             this.customGridDiv.style.display = e.target.value === 'custom' ? 'flex' : 'none';
             this.autoAdjustPixelSize();
+            this.scheduleAutoGenerate();
         });
+
+        if (this.gridWidthInput) {
+            this.gridWidthInput.addEventListener('change', () => this.scheduleAutoGenerate());
+        }
+        if (this.gridHeightInput) {
+            this.gridHeightInput.addEventListener('change', () => this.scheduleAutoGenerate());
+        }
 
         if (this.beadSizeSelect) {
             this.beadSizeSelect.addEventListener('change', () => this._updatePhysicalSize());
         }
 
-        this.generateBtn.addEventListener('click', () => this.generatePixelArt());
+        this.generateBtn.addEventListener('click', () => {
+            clearTimeout(this._autoGenTimer);
+            this.generatePixelArt();
+        });
         this.clearBtn.addEventListener('click', () => this.clearAll());
 
         if (this.showGridCheckbox) {
             this.showGridCheckbox.addEventListener('change', () => {
-                if (this.originalImage) this.generatePixelArt();
+                if (this.originalImage) this.scheduleAutoGenerate();
             });
         }
 
@@ -221,16 +235,33 @@ class PixelArtGenerator {
         reader.onload = (e) => {
             const img = new Image();
             img.onload = () => {
+                if (img.width > 4096 || img.height > 4096) {
+                    showToast(`图片尺寸 ${img.width}×${img.height} 较大，生成可能较慢`, 'warning');
+                } else if (file.size > 5 * 1024 * 1024) {
+                    showToast('图片超过 5MB，建议压缩后上传', 'warning');
+                }
                 this.originalImage = img;
                 this.showOriginalImage(e.target.result);
+                this.scheduleAutoGenerate();
             };
             img.src = e.target.result;
         };
         reader.readAsDataURL(file);
     }
 
+
     showOriginalImage(src) {
-        this.originalImageContainer.innerHTML = `<img src="${src}" alt="原图">`;
+        this.originalImageContainer.innerHTML = '<img src="' + src + '" alt="原图">';
+    }
+
+    _applyMirrorTransform(dir) {
+        if (!this.pixelData || !this.pixelData.length || dir === 'none') return;
+        if (dir === 'horizontal' || dir === 'both') {
+            for (let y = 0; y < this.pixelData.length; y++) this.pixelData[y].reverse();
+        }
+        if (dir === 'vertical' || dir === 'both') {
+            this.pixelData.reverse();
+        }
     }
 
     getGridSize() {
@@ -259,6 +290,14 @@ class PixelArtGenerator {
         this.pixelSizeValue.textContent = suggested;
     }
 
+    /** 防抖自动生成：参数变化后 300ms 无新变化才触发生成 */
+    scheduleAutoGenerate() {
+        if (!this.originalImage) return;
+        if (this._generating) return;
+        clearTimeout(this._autoGenTimer);
+        this._autoGenTimer = setTimeout(() => this.generatePixelArt(), 300);
+    }
+
     generatePixelArt() {
         if (!this.originalImage) {
             showToast('请先上传图片', 'error');
@@ -275,11 +314,11 @@ class PixelArtGenerator {
                 const colorCount = parseInt(this.colorCountSlider.value);
                 const gridSize = this.getGridSize();
                 const showGrid = this.showGridCheckbox ? this.showGridCheckbox.checked : true;
-                const coordSize = 28;
+                const coordSize = 60;
 
                 const canvas = document.createElement('canvas');
-                canvas.width = gridSize.width * pixelSize + coordSize;
-                canvas.height = gridSize.height * pixelSize + coordSize;
+                canvas.width = gridSize.width * pixelSize + coordSize * 2;
+                canvas.height = gridSize.height * pixelSize + coordSize * 2;
                 const ctx = canvas.getContext('2d');
 
                 ctx.imageSmoothingEnabled = false;
@@ -294,6 +333,7 @@ class PixelArtGenerator {
                 this.drawPixelArt(ctx, pixels, colors, gridSize.width, gridSize.height, pixelSize, showGrid, this.highlightColor);
 
                 this.currentColors = colors;
+                this._currentRenderParams = { pixelSize, gridW: gridSize.width, gridH: gridSize.height, coordSize };
                 this.showPixelArt(canvas, gridSize.width, gridSize.height, pixelSize, coordSize);
                 this.showColorPalette(colors);
                 this._calcBoundingBox();
@@ -301,6 +341,13 @@ class PixelArtGenerator {
                 this.updateStats(colors, gridSize.width * gridSize.height, gridSize.width, gridSize.height);
 
                 this.pixelCanvas = canvas;
+                // 应用镜像变换并重绘
+                var _mirrorBtn = document.querySelector('#mirrorGroup .mirror-btn.active');
+                if (_mirrorBtn && _mirrorBtn.dataset.mirror !== 'none') {
+                    this._applyMirrorTransform(_mirrorBtn.dataset.mirror);
+                    var _p = this._currentRenderParams;
+                    if (_p) this._rerenderFromData(_p.pixelSize, _p.gridW, _p.gridH, _p.coordSize);
+                }
                 this.downloadPureBtn.disabled = false;
                 this.downloadFullBtn.disabled = false;
                 this.enableExportButton();
@@ -532,26 +579,40 @@ class PixelArtGenerator {
     _drawGridBackground(ctx, w, h, pixelSize, coordSize, offsetX = 0, offsetY = 0) {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.fillStyle = '#f0f0f5';
-        ctx.fillRect(offsetX, offsetY, w * pixelSize + coordSize, coordSize);
-        ctx.fillRect(offsetX, offsetY, coordSize, h * pixelSize + coordSize);
+        ctx.fillStyle = '#e8e7ee';
+        // 左
+        ctx.fillRect(offsetX, offsetY, coordSize, h * pixelSize + coordSize * 2);
+        // 右
+        ctx.fillRect(offsetX + coordSize + w * pixelSize, offsetY, coordSize, h * pixelSize + coordSize * 2);
+        // 上
+        ctx.fillRect(offsetX, offsetY, w * pixelSize + coordSize * 2, coordSize);
+        // 下
+        ctx.fillRect(offsetX, offsetY + coordSize + h * pixelSize, w * pixelSize + coordSize * 2, coordSize);
     }
 
-    _drawGridCoords(ctx, w, h, pixelSize, coordSize, fontSize = 10, offsetX = 0, offsetY = 0) {
-        ctx.fillStyle = '#333333';
-        ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
-        ctx.textAlign = 'center';
+    _drawGridCoords(ctx, w, h, pixelSize, coordSize, fontSize = 22, offsetX = 0, offsetY = 0) {
+        // 动态字号：保底 fontSize，上限 32px
+        const dynamicSize = Math.max(fontSize, Math.min(32, Math.floor(pixelSize * 0.55)));
+        // 步长：小网格（<600格）每格显示，中网格每5，大网格每10
+        const total = w * h;
+        const step = total < 600 ? 1 : (total < 3000 ? 5 : 10);
+
         ctx.textBaseline = 'middle';
-        for (let x = 0; x < w; x++) {
-            if ((x + 1) % 10 === 0) {
-                ctx.fillText(x + 1, offsetX + coordSize + x * pixelSize + pixelSize / 2, offsetY + coordSize - 6);
-            }
+        ctx.textAlign = 'center';
+        ctx.font = 'bold ' + dynamicSize + 'px Arial, sans-serif';
+        for (let x = step - 1; x < w; x += step) {
+            const tx = offsetX + coordSize + x * pixelSize + pixelSize / 2;
+            const ty = offsetY + coordSize / 2;
+            ctx.fillStyle = '#000000';
+            ctx.fillText(x + 1, tx, ty);
         }
         ctx.textAlign = 'right';
-        for (let y = 0; y < h; y++) {
-            if ((y + 1) % 10 === 0) {
-                ctx.fillText(y + 1, offsetX + coordSize - 4, offsetY + coordSize + y * pixelSize + pixelSize / 2);
-            }
+        for (let y = step - 1; y < h; y += step) {
+            const tx = offsetX + coordSize - 8;
+            const ty = offsetY + coordSize + y * pixelSize + pixelSize / 2;
+            ctx.font = 'bold ' + dynamicSize + 'px Arial, sans-serif';
+            ctx.fillStyle = '#000000';
+            ctx.fillText(y + 1, tx, ty);
         }
     }
 
@@ -601,15 +662,38 @@ class PixelArtGenerator {
         ctx.stroke();
     }
 
-    _drawGridBase(ctx, w, h, pixelSize, coordSize, offsetX = 0, offsetY = 0, fontSize = 10) {
+    _drawGridBase(ctx, w, h, pixelSize, coordSize, offsetX = 0, offsetY = 0, fontSize = 22) {
         this._drawGridBackground(ctx, w, h, pixelSize, coordSize, offsetX, offsetY);
         this._drawGridCoords(ctx, w, h, pixelSize, coordSize, fontSize, offsetX, offsetY);
         this._drawGridLines(ctx, w, h, pixelSize, coordSize, offsetX, offsetY);
         this._drawCenterCross(ctx, w, h, pixelSize, coordSize, offsetX, offsetY);
     }
 
+    /** 在像素格四周画粗边框（需在像素块画完后调用） */
+    _drawGridBorder(ctx, w, h, pixelSize, coordSize, offsetX = 0, offsetY = 0) {
+        ctx.fillStyle = '#333333';
+        const t = 3; // 边框厚度
+        const x = offsetX + coordSize;
+        const y = offsetY + coordSize;
+        const gw = w * pixelSize;
+        const gh = h * pixelSize;
+        // 上
+        ctx.fillRect(x, y - t, gw, t);
+        // 下
+        ctx.fillRect(x, y + gh, gw, t);
+        // 左
+        ctx.fillRect(x - t, y, t, gh);
+        // 右
+        ctx.fillRect(x + gw, y, t, gh);
+        // 四角补齐
+        ctx.fillRect(x - t, y - t, t, t);
+        ctx.fillRect(x + gw, y - t, t, t);
+        ctx.fillRect(x - t, y + gh, t, t);
+        ctx.fillRect(x + gw, y + gh, t, t);
+    }
+
     drawPixelArt(ctx, pixels, colors, width, height, pixelSize, showGrid, highlightColor = null) {
-        const coordSize = 28;
+        const coordSize = 60;
 
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         this._drawGridBase(ctx, width, height, pixelSize, coordSize);
@@ -673,6 +757,7 @@ class PixelArtGenerator {
             }
             this.pixelData.push(row);
         }
+        this._drawGridBorder(ctx, width, height, pixelSize, coordSize);
     }
 
     dimColor(hex, factor) {
@@ -731,10 +816,14 @@ class PixelArtGenerator {
 
     showPixelArt(canvas, width, height, pixelSize, coordSize) {
         const self = this;
+        // 存到实例上，供全屏重绘时切换分辨率
+        self._px = pixelSize;
+        self._cx = coordSize;
         this.pixelatedContainer.innerHTML = `
             <div class="pixel-canvas-wrapper" style="position: relative; display: inline-block;">
                 <canvas id="pixelatedCanvas" width="${canvas.width}" height="${canvas.height}" style="cursor: crosshair; display: block; image-rendering: pixelated; image-rendering: crisp-edges;"></canvas>
                 <div id="coordTooltip" style="position: absolute; background: rgba(26, 26, 46, 0.95); color: #f5f5f5; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; pointer-events: none; display: none; z-index: 100; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.2);"></div>
+                <button class="fs-exit" id="fsExit" title="退出全屏 (Esc)">✕</button>
                 <div class="fs-color-bar" id="fsColorBar">
                     <button class="fs-btn" id="fsPrev">◀</button>
                     <div class="fs-color-info">
@@ -754,29 +843,77 @@ class PixelArtGenerator {
         // 全屏 —— 标题栏按钮
         const fullscreenBtn = document.getElementById('fullscreenTitleBtn');
         const wrapper = destCanvas.parentElement;
+
+        // 全屏工具函数（提出 if 块，供底部导航栏共用）
+        const isFS = () =>
+            document.fullscreenElement || document.webkitFullscreenElement;
+        const exitFS = () => {
+            const fn = document.exitFullscreen || document.webkitExitFullscreen;
+            if (fn) fn.call(document);
+        };
+
         if (fullscreenBtn) {
             fullscreenBtn.style.display = '';
-            const isFS = () =>
-                document.fullscreenElement || document.webkitFullscreenElement;
             const requestFS = () => {
                 const fn = wrapper.requestFullscreen || wrapper.webkitRequestFullscreen;
                 if (fn) return fn.call(wrapper);
                 showToast('浏览器不支持全屏', 'error');
             };
-            const exitFS = () => {
-                const fn = document.exitFullscreen || document.webkitExitFullscreen;
-                if (fn) fn.call(document);
-            };
             const toggle = () => { if (isFS()) exitFS(); else requestFS(); };
             fullscreenBtn.onclick = toggle;
             destCanvas.ondblclick = toggle;
-            const updateBtn = () => {
+
+            // 全屏时重新高分辨率绘制
+            function renderFullRes(entering) {
+                const gW = width, gH = height;
+                const pd = self.pixelData;
+                if (!pd || !pd.length) return;
+
+                if (entering) {
+                    self._origPx = self._px;
+                    self._origCx = self._cx;
+                    // 根据视口计算最佳像素尺寸（保证画布刚好填满屏幕）
+                    const newCS = 48;
+                    const maxW = window.innerWidth - newCS - 16;
+                    const maxH = window.innerHeight - newCS - 68;
+                    const newPS = Math.max(10, Math.min(Math.floor(maxW / gW), Math.floor(maxH / gH)));
+                    self._px = newPS;
+                    self._cx = newCS;
+                } else {
+                    self._px = self._origPx || self._px;
+                    self._cx = self._origCx || self._cx;
+                }
+
+                destCanvas.width = gW * self._px + self._cx * 2;
+                destCanvas.height = gH * self._px + self._cx * 2;
+                const ctx = destCanvas.getContext('2d');
+                ctx.imageSmoothingEnabled = false;
+                self._drawGridBase(ctx, gW, gH, self._px, self._cx);
+                for (let y = 0; y < gH && y < pd.length; y++) {
+                    for (let x = 0; x < gW && x < pd[y].length; x++) {
+                        const p = pd[y][x];
+                        if (!p || p.isEmpty) continue;
+                        ctx.fillStyle = p.color.hex;
+                        ctx.fillRect(self._cx + x * self._px, self._cx + y * self._px, self._px - 1, self._px - 1);
+                    }
+                }
+                self._drawGridBorder(ctx, gW, gH, self._px, self._cx);
+            }
+
+            const onFSChange = () => {
                 const inFs = isFS();
                 fullscreenBtn.innerHTML = inFs ? '✕ 退出' : '⛶ 全屏';
                 fullscreenBtn.title = inFs ? '退出全屏' : '全屏查看';
+                renderFullRes(inFs);
             };
-            document.addEventListener('fullscreenchange', updateBtn);
-            document.addEventListener('webkitfullscreenchange', updateBtn);
+            // 清除旧监听器，避免多次 showPixelArt 造成泄漏
+            if (this._fsHandler) {
+                document.removeEventListener('fullscreenchange', this._fsHandler);
+                document.removeEventListener('webkitfullscreenchange', this._fsHandler);
+            }
+            this._fsHandler = onFSChange;
+            document.addEventListener('fullscreenchange', this._fsHandler);
+            document.addEventListener('webkitfullscreenchange', this._fsHandler);
         }
 
         // ========== 逐色导航（全屏底部） ==========
@@ -792,7 +929,7 @@ class PixelArtGenerator {
             self.highlightColor = hexColor || null;
             const ctx = destCanvas.getContext('2d');
             ctx.clearRect(0, 0, destCanvas.width, destCanvas.height);
-            self._drawGridBase(ctx, width, height, pixelSize, coordSize);
+            self._drawGridBase(ctx, width, height, self._px, self._cx);
 
             for (let y = 0; y < height; y++) {
                 for (let x = 0; x < width; x++) {
@@ -816,8 +953,8 @@ class PixelArtGenerator {
                         ctx.lineWidth = 0.5;
                         ctx.globalAlpha = 1.0;
                     }
-                    ctx.fillRect(coordSize + x * pixelSize, coordSize + y * pixelSize, pixelSize - 1, pixelSize - 1);
-                    ctx.strokeRect(coordSize + x * pixelSize, coordSize + y * pixelSize, pixelSize - 1, pixelSize - 1);
+                    ctx.fillRect(self._cx + x * self._px, self._cx + y * self._px, self._px - 1, self._px - 1);
+                    ctx.strokeRect(self._cx + x * self._px, self._cx + y * self._px, self._px - 1, self._px - 1);
                 }
             }
             ctx.globalAlpha = 1.0;
@@ -825,17 +962,19 @@ class PixelArtGenerator {
             if (hexColor) {
                 for (let y = 0; y < height; y++) {
                     for (let x = 0; x < width; x++) {
-                        if (self.pixelData[y][x].color.hex === hexColor) {
+                        const p = self.pixelData[y][x];
+                        if (!p.isEmpty && p.color.hex === hexColor) {
                             ctx.strokeStyle = hexColor;
                             ctx.lineWidth = 3;
                             ctx.shadowColor = hexColor;
                             ctx.shadowBlur = 8;
-                            ctx.strokeRect(coordSize + x * pixelSize + 1, coordSize + y * pixelSize + 1, pixelSize - 3, pixelSize - 3);
+                            ctx.strokeRect(self._cx + x * self._px + 1, self._cx + y * self._px + 1, self._px - 3, self._px - 3);
                             ctx.shadowBlur = 0;
                         }
                     }
                 }
             }
+            self._drawGridBorder(ctx, width, height, self._px, self._cx);
         }
 
         // 更新底部导航栏
@@ -875,6 +1014,9 @@ class PixelArtGenerator {
                 redrawWithHighlight(null);
             };
         }
+        // 退出全屏按钮（始终绑定）
+        const fsExitBtn = document.getElementById('fsExit');
+        if (fsExitBtn) fsExitBtn.onclick = exitFS;
         updateColorBar();
 
         // ========== 鼠标 / 触控坐标提示 + 点击高亮 ==========
@@ -883,20 +1025,30 @@ class PixelArtGenerator {
 
         function getGridFromEvent(clientX, clientY) {
             const rect = destCanvas.getBoundingClientRect();
-            const scaleX = destCanvas.width / rect.width;
-            const scaleY = destCanvas.height / rect.height;
-            const x = (clientX - rect.left) * scaleX;
-            const y = (clientY - rect.top) * scaleY;
+            // 全屏下 object-fit: contain 会让画布居中留白，需计算实际绘制区域
+            const natW = destCanvas.width;
+            const natH = destCanvas.height;
+            const dispW = rect.width;
+            const dispH = rect.height;
+            const ratio = Math.min(dispW / natW, dispH / natH);
+            const drawW = natW * ratio;
+            const drawH = natH * ratio;
+            const offsetX2 = (dispW - drawW) / 2;
+            const offsetY2 = (dispH - drawH) / 2;
+            const scaleX = natW / drawW;
+            const scaleY = natH / drawH;
+            const x = ((clientX - rect.left) - offsetX2) * scaleX;
+            const y = ((clientY - rect.top) - offsetY2) * scaleY;
             return {
-                gridX: Math.floor((x - coordSize) / pixelSize),
-                gridY: Math.floor((y - coordSize) / pixelSize),
+                gridX: Math.floor((x - self._cx) / self._px),
+                gridY: Math.floor((y - self._cx) / self._px),
                 offsetX: clientX - rect.left,
                 offsetY: clientY - rect.top,
                 rect
             };
         }
 
-        function updateTooltip(gridX, gridY, offsetX, offsetY, rect) {
+        function updateTooltip(gridX, gridY, offsetX, offsetY, rect, cx, cy) {
             if (gridX >= 0 && gridX < width && gridY >= 0 && gridY < height) {
                 const cellKey = `${gridX},${gridY}`;
                 if (cellKey !== lastHoveredCell) {
@@ -905,13 +1057,20 @@ class PixelArtGenerator {
                     const colorHex = pixelInfo?.color?.hex || '#cccccc';
                     const colorName = pixelInfo?.color?.name || '未填充';
                     tooltip.innerHTML = `<span style="color: ${colorHex}; font-size: 14px;">●</span> 坐标: (${gridX + 1}, ${gridY + 1}) | ${colorName}`;
-                    let tooltipX = offsetX + 15;
-                    let tooltipY = offsetY - 30;
-                    if (tooltipX + 200 > rect.width) tooltipX = offsetX - 180;
-                    if (tooltipY < 0) tooltipY = offsetY + 15;
+                    tooltip.style.display = 'block';
+                    // 用鼠标相对于 wrapper 的位置定位（避开全屏下 canvas 居中偏移）
+                    const wRect = wrapper.getBoundingClientRect();
+                    const mX = cx - wRect.left;
+                    const mY = cy - wRect.top;
+                    const tipW = tooltip.offsetWidth;
+                    let tooltipX = mX + 10;
+                    let tooltipY = mY - 28;
+                    if (tooltipX + tipW + 6 > wRect.width) {
+                        tooltipX = mX - tipW - 8;
+                    }
+                    if (tooltipY < 0) tooltipY = mY + 12;
                     tooltip.style.left = tooltipX + 'px';
                     tooltip.style.top = tooltipY + 'px';
-                    tooltip.style.display = 'block';
                 }
             } else {
                 tooltip.style.display = 'none';
@@ -921,27 +1080,29 @@ class PixelArtGenerator {
 
         function handleCellClick(gridX, gridY) {
             if (gridX >= 0 && gridX < width && gridY >= 0 && gridY < height) {
-                const clickedColorHex = self.pixelData[gridY]?.[gridX]?.color?.hex;
-                if (clickedColorHex) {
-                    if (self.highlightColor === clickedColorHex) {
+                const pixel = self.pixelData[gridY]?.[gridX];
+                if (!pixel || pixel.isEmpty) return;
+                const hex = pixel.color?.hex;
+                if (hex) {
+                    if (self.highlightColor === hex) {
                         colorIndex = -1;
                         updateColorBar();
                         redrawWithHighlight(null);
                         showToast('已取消高亮，显示全图');
                     } else {
-                        colorIndex = usedColors.findIndex(c => c.hex === clickedColorHex);
+                        colorIndex = usedColors.findIndex(c => c.hex === hex);
                         if (colorIndex < 0) colorIndex = 0;
                         updateColorBar();
-                        redrawWithHighlight(clickedColorHex);
-                        showToast(`已高亮: ${clickedColorHex}`);
+                        redrawWithHighlight(hex);
+                        self.selectColorInPalette(hex);
+                        showToast(`已高亮: ${hex}`);
                     }
                 }
             }
         }
-
         destCanvas.addEventListener('mousemove', (e) => {
             const { gridX, gridY, offsetX, offsetY, rect } = getGridFromEvent(e.clientX, e.clientY);
-            updateTooltip(gridX, gridY, offsetX, offsetY, rect);
+            updateTooltip(gridX, gridY, offsetX, offsetY, rect, e.clientX, e.clientY);
         });
         destCanvas.addEventListener('mouseleave', () => {
             tooltip.style.display = 'none';
@@ -957,13 +1118,13 @@ class PixelArtGenerator {
             touchStartX = touch.clientX;
             touchStartY = touch.clientY;
             const { gridX, gridY, offsetX, offsetY, rect } = getGridFromEvent(touch.clientX, touch.clientY);
-            updateTooltip(gridX, gridY, offsetX, offsetY, rect);
+            updateTooltip(gridX, gridY, offsetX, offsetY, rect, touch.clientX, touch.clientY);
         }, { passive: false });
         destCanvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
             const touch = e.touches[0];
             const { gridX, gridY, offsetX, offsetY, rect } = getGridFromEvent(touch.clientX, touch.clientY);
-            updateTooltip(gridX, gridY, offsetX, offsetY, rect);
+            updateTooltip(gridX, gridY, offsetX, offsetY, rect, touch.clientX, touch.clientY);
         }, { passive: false });
         destCanvas.addEventListener('touchend', (e) => {
             e.preventDefault();
@@ -999,10 +1160,19 @@ class PixelArtGenerator {
                     <span class="hex-code">${color.name}</span>
                     <span class="bead-count">${color.count}颗</span>
                 </div>
+                <button class="swatch-replace" data-hex="${color.hex}" title="替换此颜色">↻</button>
             </div>
         `).join('');
 
         this.colorPalette.innerHTML = html;
+        // 替换按钮绑定事件
+        this.colorPalette.querySelectorAll('.swatch-replace').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const hex = btn.dataset.hex;
+                if (window._picker) window._picker(hex);
+            });
+        });
     }
 
     /** 检测非空像素的边界框（自动识别背景色并裁剪空白边距） */
@@ -1425,6 +1595,83 @@ class PixelArtGenerator {
         showToast('已下载材料清单');
     }
 
+    selectColorInPalette(hex) {
+        if (!this.colorPalette) return;
+        const swatches = this.colorPalette.querySelectorAll('.color-swatch');
+        swatches.forEach(el => {
+            const inner = el.querySelector('.color-swatch-inner');
+            if (inner) {
+                const bg = inner.style.backgroundColor;
+                if (bg && 'rgb(' + parseInt(hex.slice(1,3),16) + ', ' + parseInt(hex.slice(3,5),16) + ', ' + parseInt(hex.slice(5,7),16) + ')' === bg) {
+                    el.style.outline = '3px solid #333';
+                    el.style.outlineOffset = '2px';
+                    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    el.style.outline = '';
+                    el.style.outlineOffset = '';
+                }
+            }
+        });
+    }
+
+    replaceColor(sourceHex, targetHex) {
+        if (sourceHex === targetHex || !this.pixelData.length) return;
+        for (let y = 0; y < this.pixelData.length; y++) {
+            for (let x = 0; x < this.pixelData[y].length; x++) {
+                const p = this.pixelData[y][x];
+                if (!p.isEmpty && p.color.hex === sourceHex) {
+                    const tc = this.currentColors.find(c => c.hex === targetHex);
+                    if (tc) p.color = tc;
+                }
+            }
+        }
+        this.beadCountMap.clear();
+        for (let y = 0; y < this.pixelData.length; y++) {
+            for (let x = 0; x < this.pixelData[y].length; x++) {
+                const p = this.pixelData[y][x];
+                if (!p.isEmpty) {
+                    this.beadCountMap.set(p.color.hex, (this.beadCountMap.get(p.color.hex) || 0) + 1);
+                }
+            }
+        }
+        this.showColorPalette(this.currentColors);
+        const p = this._currentRenderParams;
+        if (p) {
+            this._rerenderFromData(p.pixelSize, p.gridW, p.gridH, p.coordSize);
+        }
+    }
+
+    _rerenderFromData(pixelSize, gw, gh, coordSize) {
+        const w = gw, h = gh;
+        const canvas = document.createElement('canvas');
+        canvas.width = w * pixelSize + coordSize * 2;
+        canvas.height = h * pixelSize + coordSize * 2;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        this._drawGridBase(ctx, w, h, pixelSize, coordSize);
+        for (let y = 0; y < h && y < this.pixelData.length; y++) {
+            for (let x = 0; x < w && x < this.pixelData[y].length; x++) {
+                const p = this.pixelData[y][x];
+                if (p && !p.isEmpty) {
+                    ctx.fillStyle = p.color.hex;
+                    ctx.fillRect(coordSize + x * pixelSize, coordSize + y * pixelSize, pixelSize - 1, pixelSize - 1);
+                }
+            }
+        }
+        this._drawGridBorder(ctx, w, h, pixelSize, coordSize);
+        this.showPixelArt(canvas, w, h, pixelSize, coordSize);
+        this.enableExportButton();
+        const total = w * h;
+        if (this.statsSection) {
+            this.statsSection.style.display = 'block';
+            this.statsSection.classList.add('show');
+        }
+        if (this.totalBeadsEl) this.totalBeadsEl.textContent = total.toLocaleString();
+        if (this.colorCountUsedEl) this.colorCountUsedEl.textContent = this.currentColors.filter(c => this.beadCountMap.get(c.hex) > 0).length;
+        if (this.gridDimensionsEl) this.gridDimensionsEl.textContent = w + '×' + h;
+    }
+
+
     clearAll() {
         this.imageInput.value = '';
         this.originalImage = null;
@@ -1434,15 +1681,19 @@ class PixelArtGenerator {
         this.pixelData = [];
         this.highlightColor = null;
         this._bbox = null;
+        clearTimeout(this._autoGenTimer);
         if (this.physicalSizeEl) this.physicalSizeEl.textContent = '—';
         if (this.physicalDimensionsEl) this.physicalDimensionsEl.textContent = '—';
 
-        this.originalImageContainer.innerHTML = `
-            <div class="placeholder">
-                <span>🖼️</span>
-                <p>请先上传图片</p>
-            </div>
-        `;
+        if (this.originalImageContainer) {
+            this.originalImageContainer.innerHTML = `
+                <div class="placeholder">
+                    <span>🖼️</span>
+                    <p>请上传图片</p>
+                </div>
+            `;
+        }
+
         this.pixelatedContainer.innerHTML = `
             <div class="placeholder">
                 <span>🧩</span>
@@ -1487,9 +1738,49 @@ function showToast(message) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    new PixelArtGenerator();
+    const gen = new PixelArtGenerator();
+    window._generator = gen;
 
-    // 点击导航链接时关闭移动端菜单
+    // ── 镜像按钮切换 ──
+    document.querySelectorAll('.mirror-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.parentElement.querySelectorAll('.mirror-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+
+    // 颜色替换选择器
+    window._picker = function(sourceHex) {
+        var gen = window._generator;
+        if (!gen || !gen.currentColors) return;
+        var candidates = [];
+        for (var ci = 0; ci < gen.currentColors.length; ci++) {
+            var c = gen.currentColors[ci];
+            if (c.hex !== sourceHex && gen.beadCountMap.get(c.hex) > 0) {
+                candidates.push(c);
+            }
+        }
+        if (candidates.length === 0) { showToast('没有其他颜色可替换'); return; }
+        var srcName = '';
+        for (var ci = 0; ci < gen.currentColors.length; ci++) {
+            if (gen.currentColors[ci].hex === sourceHex) { srcName = gen.currentColors[ci].name; break; }
+        }
+        var msg = '将 ' + srcName + ' 替换为:';
+        for (var ci = 0; ci < candidates.length; ci++) {
+            msg += String.fromCharCode(10) + (ci+1) + '. ' + candidates[ci].name + ' (' + candidates[ci].hex + ')';
+        }
+        var choice = prompt(msg + String.fromCharCode(10,10) + '请输入编号 (1-' + candidates.length + ')');
+        if (!choice) return;
+        var idx = parseInt(choice) - 1;
+        if (idx >= 0 && idx < candidates.length) {
+            gen.replaceColor(sourceHex, candidates[idx].hex);
+            showToast('已替换颜色');
+        } else {
+            showToast('无效选择');
+        }
+    };
+
+    // 点击导航链接时关闭移动端菜单    // 点击导航链接时关闭移动端菜单
     const navMenu = document.querySelector('.nav-menu');
     const navLinks = document.querySelectorAll('.nav-link');
     navLinks.forEach(link => {
