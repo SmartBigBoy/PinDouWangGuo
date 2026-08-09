@@ -245,18 +245,39 @@
             <h2 class="section-title">🎨 像素画生成器</h2>
             <p class="section-desc">上传照片，自动匹配拼豆色号，生成可打印的方格底图和材料清单</p>
             <div class="generator-grid">
-                <div class="generator-left">
-                    <div class="upload-section">
-                        <div class="upload-area" id="uploadArea" role="button" tabindex="0" aria-label="点击或拖拽上传图片">
-                            <input type="file" id="imageInput" accept="image/*" style="display: none;">
-                            <label for="imageInput" class="upload-label">
-                                <div class="upload-icon" aria-hidden="true">📷</div>
-                                <p>点击或拖拽上传图片</p>
-                                <p class="hint">支持 JPG、PNG、GIF 格式</p>
-                            </label>
+                <!-- 预览区：原图上排左，拼豆效果上排右 -->
+                <div class="preview-section">
+                    <div class="preview-container">
+                        <!-- 原图框：合并上传功能 -->
+                        <div class="preview-box" id="originalBox">
+                            <h3>原图</h3>
+                            <div id="originalImage" class="image-container upload-target" role="button" tabindex="0" aria-label="点击或拖拽上传图片">
+                                <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                                <label for="imageInput" class="upload-prompt">
+                                    <span class="upload-icon" aria-hidden="true">📷</span>
+                                    <p>点击或拖拽上传图片</p>
+                                    <p class="hint">支持 JPG、PNG、GIF 格式</p>
+                                </label>
+                                <button class="image-replace-btn" id="replaceImageBtn" title="更换图片" aria-label="更换图片">📷 更换图片</button>
+                            </div>
+                        </div>
+
+                        <div class="preview-box pixel-box">
+                            <h3>拼豆效果
+                                <button class="fullscreen-title-btn" id="fullscreenTitleBtn" title="全屏查看" aria-label="全屏查看拼豆效果">⛶ 全屏</button>
+                            </h3>
+                            <div id="pixelatedImage" class="pixel-art-container">
+                                <div class="placeholder">
+                                    <span>🎨</span>
+                                    <p>效果预览</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
+                </div>
 
+                <!-- 工具栏：控制栏（原图下方）+ 操作按钮（拼豆效果下方），同一水平线 -->
+                <div class="toolbar-row">
                     <div class="controls-section">
                         <div class="control-row">
                             <div class="control-group">
@@ -318,72 +339,45 @@
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <div class="generator-right">
-                    <div class="preview-section">
-                        <div class="preview-container">
-                            <div class="preview-box">
-                                <h3>原图</h3>
-                                <div id="originalImage" class="image-container">
-                                    <div class="placeholder">
-                                        <span>🖼️</span>
-                                        <p>请上传图片</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="preview-box pixel-box">
-                                <h3>拼豆效果
-                                    <button class="fullscreen-title-btn" id="fullscreenTitleBtn" title="全屏查看" aria-label="全屏查看拼豆效果">⛶ 全屏</button>
-                                </h3>
-                                <div id="pixelatedImage" class="pixel-art-container">
-                                    <div class="placeholder">
-                                        <span>🎨</span>
-                                        <p>效果预览</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
                     <div class="actions-section primary-actions">
                         <button id="generateBtn" class="btn btn-primary btn-lg">🎨 生成图纸</button>
-                        <button id="downloadPureBtn" class="btn btn-secondary btn-lg" disabled>📥︎ ️纯像素图</button>
+                        <button id="downloadPureBtn" class="btn btn-secondary btn-lg" disabled>📥 纯像素图</button>
                         <button id="downloadFullBtn" class="btn btn-secondary btn-lg" disabled>📥 全信息图</button>
                         <button id="exportCsvBtn" class="btn btn-secondary btn-lg" disabled>📋 材料清单</button>
                         <button id="clearBtn" class="btn btn-danger">🗑️ 清空重置</button>
                     </div>
+                </div>
 
-                    <div class="color-palette-section">
-                        <h3>配色方案</h3>
-                        <p class="palette-hint">点击任意颜色即可替换为色库中的其他颜色</p>
-                        <div id="colorPalette" class="color-palette">
-                            <p class="placeholder">颜色将在这里显示</p>
-                        </div>
+                <div class="color-palette-section">
+                    <h3>配色方案</h3>
+                    <p class="palette-hint">点击任意颜色即可替换为色库中的其他颜色</p>
+                    <div id="colorPalette" class="color-palette">
+                        <p class="placeholder">颜色将在这里显示</p>
                     </div>
+                </div>
 
-                    <div class="stats-section" id="statsSection">
-                        <div class="stats-grid">
-                            <div class="stat-item">
-                                <span class="stat-icon">🧮</span>
-                                <span class="stat-label">总拼豆</span>
-                                <span class="stat-value" id="totalBeads">0</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-icon">🎨</span>
-                                <span class="stat-label">颜色</span>
-                                <span class="stat-value" id="colorCountUsed">0</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-icon">📐</span>
-                                <span class="stat-label">网格</span>
-                                <span class="stat-value" id="gridDimensions">0×0</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-icon">📏</span>
-                                <span class="stat-label">实物</span>
-                                <span class="stat-value" id="physicalDimensions">—</span>
-                            </div>
+                <div class="stats-section" id="statsSection">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-icon">🧮</span>
+                            <span class="stat-label">总拼豆</span>
+                            <span class="stat-value" id="totalBeads">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-icon">🎨</span>
+                            <span class="stat-label">颜色</span>
+                            <span class="stat-value" id="colorCountUsed">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-icon">📐</span>
+                            <span class="stat-label">网格</span>
+                            <span class="stat-value" id="gridDimensions">0×0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-icon">📏</span>
+                            <span class="stat-label">实物</span>
+                            <span class="stat-value" id="physicalDimensions">—</span>
                         </div>
                     </div>
                 </div>
@@ -445,6 +439,11 @@
                     <span class="feature-icon">📱</span>
                     <h3>全平台适配</h3>
                     <p>支持手机、平板、电脑全平台使用，触屏设备也可以流畅操作，随时随地创作你的拼豆作品。</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">🔓</span>
+                    <h3>完全免费</h3>
+                    <p>无需注册、无需付费，所有功能完全免费使用。图纸、色卡、材料清单均可无限次导出，零门槛创作。</p>
                 </div>
             </div>
         </div>
