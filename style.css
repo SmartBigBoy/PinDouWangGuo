@@ -970,7 +970,7 @@ body {
 
 .palette-hint {
     text-align: center;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--text-light);
     margin: 0 0 16px 0;
     opacity: 0.7;
