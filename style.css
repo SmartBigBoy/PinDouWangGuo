@@ -872,32 +872,31 @@ body {
 .stat-item {
     text-align: center;
     padding: 20px 15px;
-    background: var(--bg-gradient);
+    background: var(--card-bg);
     border-radius: 16px;
-    border: none;
-    box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .stat-icon {
     font-size: 1.5rem;
     display: block;
     margin-bottom: 5px;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
 }
 
 .stat-label {
     display: block;
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.9);
-    margin-bottom: 5px;
-    font-weight: 600;
+    font-size: 0.82rem;
+    color: var(--text-light);
+    margin-bottom: 4px;
+    font-weight: 500;
 }
 
 .stat-value {
     display: block;
-    font-size: 1.6rem;
-    font-weight: 800;
-    color: var(--text-on-gradient);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-dark);
 }
 
 .color-palette-section {
