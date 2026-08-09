@@ -7,17 +7,18 @@
 }
 
 :root {
-    /* ── 白色极简配色 ── */
-    --primary-color: #6366F1;
-    --primary-rgb: 99, 102, 241;
-    --secondary-color: #8B5CF6;
-    --secondary-rgb: 139, 92, 246;
-    --accent-color: #10B981;
-    --accent-rgb: 16, 185, 129;
+    /* ── 雾石灰 · Violet-Gray 极简配色 ── */
+    --primary-color: #7C7FB3;
+    --primary-rgb: 124, 127, 179;
+    --primary-hover: #6A6D9E;
+    --secondary-color: #9D9EC8;
+    --secondary-rgb: 157, 158, 200;
+    --accent-color: #8BA89A;
+    --accent-rgb: 139, 168, 154;
 
-    --bg-gradient: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
-    --primary-gradient: linear-gradient(135deg, #F8F9FC 0%, #EEF2FF 50%, #F5F3FF 100%);
-    --secondary-gradient: linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%);
+    --bg-gradient: linear-gradient(135deg, #7C7FB3 0%, #9D9EC8 100%);
+    --primary-gradient: linear-gradient(135deg, #F8F9FB 0%, #F3F4F6 50%, #FAFAFB 100%);
+    --secondary-gradient: linear-gradient(135deg, #F3F4F6 0%, #FAFAFB 100%);
 
     /* ── 文字色 ── */
     --text-dark: #1F2937;
@@ -69,16 +70,17 @@
 
 /* ==================== 暗色模式 ==================== */
 [data-theme="dark"] {
-    --primary-color: #818CF8;
-    --primary-rgb: 129, 140, 248;
-    --secondary-color: #A78BFA;
-    --secondary-rgb: 167, 139, 250;
-    --accent-color: #34D399;
-    --accent-rgb: 52, 211, 153;
+    --primary-color: #A5A8CE;
+    --primary-rgb: 165, 168, 206;
+    --primary-hover: #B8BAE0;
+    --secondary-color: #C0C2E0;
+    --secondary-rgb: 192, 194, 224;
+    --accent-color: #7DAF9A;
+    --accent-rgb: 125, 175, 154;
 
-    --bg-gradient: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
-    --primary-gradient: linear-gradient(135deg, #1a1a2e 0%, #1e1e3a 50%, #1a1a32 100%);
-    --secondary-gradient: linear-gradient(135deg, #1e1e3a 0%, #1a1a32 100%);
+    --bg-gradient: linear-gradient(135deg, #7C7FB3 0%, #9D9EC8 100%);
+    --primary-gradient: linear-gradient(135deg, #1a1a2a 0%, #1e1e2e 50%, #1b1b2a 100%);
+    --secondary-gradient: linear-gradient(135deg, #1e1e2e 0%, #1b1b2a 100%);
 
     --text-dark: #e0e0f0;
     --text-light: #b0b0c8;
@@ -846,11 +848,12 @@ body {
 /* Generator stats section */
 #statsSection {
     display: none;
-    background: var(--bg-gradient);
+    background: var(--card-bg);
     border-radius: 20px;
+    border: 1px solid var(--border-color);
     padding: 25px;
     margin-bottom: 20px;
-    box-shadow: 0 8px 30px rgba(var(--primary-rgb), 0.3);
+    box-shadow: var(--shadow-sm);
 }
 
 #statsSection.show {
@@ -1066,7 +1069,7 @@ body {
     right: -15%;
     width: 600px;
     height: 600px;
-    background: rgba(99, 102, 241, 0.06);
+    background: rgba(124, 127, 179, 0.04);
     border-radius: 50%;
     animation: float 6s ease-in-out infinite;
 }
@@ -1078,7 +1081,7 @@ body {
     left: -10%;
     width: 400px;
     height: 400px;
-    background: rgba(139, 92, 246, 0.04);
+    background: rgba(157, 158, 200, 0.03);
     border-radius: 50%;
     animation: float 8s ease-in-out infinite reverse;
 }
@@ -1107,14 +1110,10 @@ body {
     font-family: 'ZCOOL KuaiLe', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
     font-size: 3.5rem;
     font-weight: 400;
-    background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #A78BFA 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--text-dark);
     margin-bottom: 20px;
     line-height: 1.1;
     letter-spacing: 0.04em;
-    text-shadow: none;
 }
 
 .hero-text p {
@@ -1140,7 +1139,7 @@ body {
     font-weight: 700;
     font-size: 1.1rem;
     border: 2px solid var(--primary-color);
-    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.35);
+    box-shadow: 0 8px 25px rgba(124, 127, 179, 0.25);
     transition: all 0.3s ease;
     display: inline-flex;
     align-items: center;
@@ -1148,21 +1147,21 @@ body {
 }
 
 .hero-btn-primary:hover {
-    background: var(--secondary-color);
-    border-color: var(--secondary-color);
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
     transform: translateY(-3px);
-    box-shadow: 0 12px 35px rgba(99, 102, 241, 0.45);
+    box-shadow: 0 12px 35px rgba(124, 127, 179, 0.35);
 }
 
 .hero-btn-secondary {
     padding: 16px 40px;
     background: transparent;
-    color: var(--primary-color);
+    color: var(--text-dark);
     text-decoration: none;
     border-radius: 50px;
     font-weight: 700;
     font-size: 1.1rem;
-    border: 2px solid var(--primary-color);
+    border: 2px solid var(--border-color);
     transition: all 0.3s ease;
     display: inline-flex;
     align-items: center;
@@ -1170,10 +1169,10 @@ body {
 }
 
 .hero-btn-secondary:hover {
-    background: var(--primary-color);
-    color: #ffffff;
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: rgba(124, 127, 179, 0.05);
     transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.35);
 }
 
 .hero-visual {
