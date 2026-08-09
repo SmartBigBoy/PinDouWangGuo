@@ -328,7 +328,8 @@ class PixelArtGenerator {
                 this.showColorPalette(colors);
                 this._calcBoundingBox();
                 this._updatePhysicalSize();
-                this.updateStats(colors, gridSize.width * gridSize.height, gridSize.width, gridSize.height);
+                const actualTotal = Array.from(this.beadCountMap.values()).reduce(function(a, b) { return a + b; }, 0);
+                this.updateStats(colors, actualTotal, gridSize.width, gridSize.height);
 
                 this.pixelCanvas = canvas;
                 this.downloadPureBtn.disabled = false;
@@ -1656,7 +1657,7 @@ class PixelArtGenerator {
         this._drawGridBorder(ctx, w, h, pixelSize, coordSize);
         this.showPixelArt(canvas, w, h, pixelSize, coordSize);
         this.enableExportButton();
-        const total = w * h;
+        const total = Array.from(this.beadCountMap.values()).reduce(function(a, b) { return a + b; }, 0);
         if (this.statsSection) {
             this.statsSection.style.display = 'block';
             this.statsSection.classList.add('show');
