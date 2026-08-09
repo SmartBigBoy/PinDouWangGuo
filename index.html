@@ -13,7 +13,18 @@
     <meta name="language" content="Chinese">
     
     <!-- 主题色 -->
-    <meta name="theme-color" content="#F4A0B8">
+    <meta name="theme-color" content="#6366F1">
+
+    <!-- DNS 预解析 & 预连接 —— 提速外部资源 -->
+    <link rel="dns-prefetch" href="//hm.baidu.com">
+    <link rel="preconnect" href="https://hm.baidu.com" crossorigin>
+    
+    <!-- 多语言标注 -->
+    <link rel="alternate" hreflang="zh-CN" href="https://pindou.skin/">
+    <link rel="alternate" hreflang="x-default" href="https://pindou.skin/">
+
+    <!-- Sitemap -->
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml">
     
     <!-- 规范链接 -->
     <link rel="canonical" href="https://pindou.skin/">
@@ -54,7 +65,80 @@
         "author": {
             "@type": "Organization",
             "name": "拼豆王国"
-        }
+        },
+        "featureList": [
+            "智能图片像素化处理",
+            "291色MARD拼豆色卡匹配",
+            "方格底图一键生成",
+            "多品牌色库支持（MARD、Artkal、Perler、Hama）",
+            "材料清单CSV导出",
+            "5mm / 2.6mm / 8mm 三种拼豆规格"
+        ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "拼豆是什么？",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "拼豆（Perler Beads）是一种创意手工玩具，将彩色塑料珠在模板上排列成图案，用熨斗加热使其融化粘合，冷却后即可完成作品。"
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "如何把照片转成拼豆图纸？",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "在拼豆王国上传你的图片，选择像素大小和颜色数量，系统会自动将图片像素化，并匹配到最接近的拼豆色号，生成可打印的方格底图和材料清单。"
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "支持哪些拼豆品牌？",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "拼豆王国支持 MARD 全色291、MARD 标准221、Artkal 色卡、Artkal Mini 小颗豆、Perler 北美色卡、Hama 日欧色卡共6套色库。"
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "拼豆王国收费吗？",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "完全免费。拼豆王国是一个免费在线工具，无需注册、无需下载，打开浏览器就能使用。"
+                }
+            }
+        ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        "name": "照片转拼豆图纸教程",
+        "description": "三步把照片变成拼豆图纸",
+        "step": [
+            {
+                "@type": "HowToStep",
+                "name": "上传图片",
+                "text": "点击上传区域或拖拽一张 JPG/PNG/GIF 图片到页面。"
+            },
+            {
+                "@type": "HowToStep",
+                "name": "调整参数",
+                "text": "选择像素大小、颜色数量、网格尺寸和豆子规格，实时预览效果。"
+            },
+            {
+                "@type": "HowToStep",
+                "name": "下载图纸",
+                "text": "点击生成图纸，下载纯像素图、全信息图或材料清单 CSV 文件。"
+            }
+        ]
     }
     </script>
     
@@ -158,6 +242,8 @@
 
     <main class="main-content" id="generator">
         <div class="content-wrapper">
+            <h2 class="section-title">🎨 像素画生成器</h2>
+            <p class="section-desc">上传照片，自动匹配拼豆色号，生成可打印的方格底图和材料清单</p>
             <div class="generator-grid">
                 <div class="generator-left">
                     <div class="upload-section">
@@ -229,17 +315,6 @@
                                     <option value="8">8mm 大颗粒</option>
                                 </select>
                                 <span id="physicalSize">—</span>
-                            </div>
-                        </div>
-                        <div class="control-row">
-                            <div class="control-group">
-                                <label>镜像</label>
-                                <div class="mirror-group" id="mirrorGroup">
-                                    <button class="mirror-btn active" data-mirror="none">无</button>
-                                    <button class="mirror-btn" data-mirror="horizontal">↔</button>
-                                    <button class="mirror-btn" data-mirror="vertical">↕</button>
-                                    <button class="mirror-btn" data-mirror="both">⟳</button>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -326,32 +401,49 @@
         </div>
     </section>
 
-    <section class="about-section" id="about">
-        <div class="about-container">
-            <h2>🎨 关于拼豆</h2>
-            <p>拼豆（Perler Beads）是一种创意手工玩具，通过将彩色小珠子排列成图案，然后用熨斗加热使其融化粘合，制作出各种可爱的作品。</p>
-            
-            <div class="about-grid">
-                <div class="about-card">
-                    <h3>🎯 拼豆玩法</h3>
-                    <ol>
-                        <li>在拼豆板上排列珠子</li>
-                        <li>用熨斗加热使珠子融化</li>
-                        <li>冷却后取下完成作品</li>
-                    </ol>
+    <!-- 赞赏弹窗 -->
+    <div class="modal" id="donateModal">
+        <div class="donate-modal">
+            <span class="modal-close" id="donateClose">&times;</span>
+            <h2>☕ 请我喝杯咖啡</h2>
+            <p>感谢你的支持 💛</p>
+            <div class="donate-qrcode">
+                <img src="images/wechat_donate.png" alt="微信赞赏码">
+            </div>
+            <p class="donate-tip">用微信扫一扫即可赞赏</p>
+        </div>
+    </div>
+
+    <!-- 功能特色 -->
+    <section class="features-section">
+        <div class="features-container">
+            <h2>✨ 拼豆王国 — 免费在线拼豆图纸生成器</h2>
+            <p>拼豆王国是一个免费的像素艺术创作工具，无需注册、无需下载，打开浏览器就能把任何照片转换成拼豆图纸。</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <span class="feature-icon">🤖</span>
+                    <h3>智能像素化</h3>
+                    <p>基于K-means聚类算法自动将图片像素化，准确还原颜色和轮廓，支持291种MARD拼豆色号的精准匹配。</p>
                 </div>
-                <div class="about-card">
-                    <h3>📏 常用尺寸</h3>
-                    <ul>
-                        <li>标准板: 29×29 颗</li>
-                        <li>大四板: 58×58 颗</li>
-                        <li>超大板: 104×104 颗</li>
-                    </ul>
+                <div class="feature-card">
+                    <span class="feature-icon">🎨</span>
+                    <h3>多品牌色库</h3>
+                    <p>内置MARD全色291、MARD标准221、Artkal、Artkal Mini、Perler北美、Hama日欧共6套专业拼豆色卡，一键切换。</p>
                 </div>
-                <div class="about-card">
-                    <h3>🎨 MARD色卡</h3>
-                    <p>MARD是国内最受欢迎的拼豆品牌，拥有291种丰富颜色，涵盖各种色系，满足你的创意需求。</p>
-                    <a href="colors.html" class="color-link">查看完整色卡</a>
+                <div class="feature-card">
+                    <span class="feature-icon">📐</span>
+                    <h3>多规格支持</h3>
+                    <p>支持5mm标准拼豆、2.6mm Mini小颗粒、8mm大颗粒三种规格，自动计算实物尺寸，适配15×15到104×104网格。</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">📥</span>
+                    <h3>一键导出</h3>
+                    <p>支持下载纯像素图PNG、带色号标注的全信息图，以及包含颜色编号和数量的材料清单CSV文件，直接买拼豆。</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">📱</span>
+                    <h3>全平台适配</h3>
+                    <p>支持手机、平板、电脑全平台使用，触屏设备也可以流畅操作，随时随地创作你的拼豆作品。</p>
                 </div>
             </div>
         </div>

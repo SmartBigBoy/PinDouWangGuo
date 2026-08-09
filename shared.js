@@ -3,12 +3,30 @@
  * 导航栏、页脚、统计代码的集中管理
  */
 
+// 页面渲染前立即应用主题，避免闪烁
+(function() {
+  try {
+    const theme = localStorage.getItem('pindou-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+  } catch(e) {}
+})();
+
 const SHARED = {
   /** 获取当前页面标识：index / colors / about / library / materials */
   _currentPage() {
     const path = location.pathname.split('/').pop() || 'index.html';
     if (path === '' || path === 'index.html') return 'index';
     return path.replace('.html', '');
+  },
+
+  /** 主题状态：'light' | 'dark' */
+  getTheme() {
+    try { return localStorage.getItem('pindou-theme') || 'light'; } catch(e) { return 'light'; }
+  },
+
+  setTheme(theme) {
+    try { localStorage.setItem('pindou-theme', theme); } catch(e) {}
+    document.documentElement.setAttribute('data-theme', theme);
   },
 
   /** 导航栏 HTML */
@@ -24,6 +42,8 @@ const SHARED = {
       { id: 'about',    label: '拼豆历史', href: 'about.html' },
       { id: 'library',  label: '素材库',   href: 'library.html' },
     ];
+
+    const isDark = this.getTheme() === 'dark';
 
     const navLinks = links.map(link =>
       `<a href="${link.href}" class="nav-link${page === link.id ? ' active' : ''}">${link.label}</a>`
@@ -41,6 +61,9 @@ const SHARED = {
             <div class="nav-menu" role="menubar">
                 ${navLinks}
             </div>
+            <button class="theme-toggle" id="themeToggle" aria-label="${isDark ? '切换到浅色模式' : '切换到暗色模式'}" title="${isDark ? '切换到浅色模式' : '切换到暗色模式'}">
+                ${isDark ? '☀️' : '🌙'}
+            </button>
             <button class="nav-toggle" id="navToggle" aria-label="切换导航菜单" aria-expanded="false">
                 <span></span>
                 <span></span>
@@ -156,8 +179,24 @@ gtag('config', 'G-6CF7YT06DK');`
     }
   },
 
+  /** 初始化主题切换（主题已在顶部 IIFE 中应用） */
+  initThemeToggle() {
+    // Delegate click
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('#themeToggle');
+      if (!btn) return;
+      const current = document.documentElement.getAttribute('data-theme') || 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      this.setTheme(next);
+      btn.setAttribute('aria-label', next === 'dark' ? '切换到浅色模式' : '切换到暗色模式');
+      btn.setAttribute('title', next === 'dark' ? '切换到浅色模式' : '切换到暗色模式');
+      btn.textContent = next === 'dark' ? '☀️' : '🌙';
+    });
+  },
+
   /** 一键初始化所有 */
   initAll() {
+    this.initThemeToggle();
     this.initNavbar();
     this.initNavToggle();
     this.initFooter();

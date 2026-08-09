@@ -254,16 +254,6 @@ class PixelArtGenerator {
         this.originalImageContainer.innerHTML = '<img src="' + src + '" alt="原图">';
     }
 
-    _applyMirrorTransform(dir) {
-        if (!this.pixelData || !this.pixelData.length || dir === 'none') return;
-        if (dir === 'horizontal' || dir === 'both') {
-            for (let y = 0; y < this.pixelData.length; y++) this.pixelData[y].reverse();
-        }
-        if (dir === 'vertical' || dir === 'both') {
-            this.pixelData.reverse();
-        }
-    }
-
     getGridSize() {
         const selected = this.gridSizeSelect.value;
         if (selected === 'custom') {
@@ -341,13 +331,6 @@ class PixelArtGenerator {
                 this.updateStats(colors, gridSize.width * gridSize.height, gridSize.width, gridSize.height);
 
                 this.pixelCanvas = canvas;
-                // 应用镜像变换并重绘
-                var _mirrorBtn = document.querySelector('#mirrorGroup .mirror-btn.active');
-                if (_mirrorBtn && _mirrorBtn.dataset.mirror !== 'none') {
-                    this._applyMirrorTransform(_mirrorBtn.dataset.mirror);
-                    var _p = this._currentRenderParams;
-                    if (_p) this._rerenderFromData(_p.pixelSize, _p.gridW, _p.gridH, _p.coordSize);
-                }
                 this.downloadPureBtn.disabled = false;
                 this.downloadFullBtn.disabled = false;
                 this.enableExportButton();
@@ -1149,12 +1132,13 @@ class PixelArtGenerator {
             count: this.beadCountMap.get(c.hex) || 0
         })).sort((a, b) => b.count - a.count).filter(c => c.count > 0);
 
+        const self = this;
         const html = sortedColors.map((color, i) => `
             <div class="color-swatch" tabindex="0" role="button"
-                 title="${color.name} (${color.count}颗)"
-                 aria-label="${color.name}，${color.count}颗，点击复制色号"
-                 onclick="copyColorInfo('${color.hex}', '${color.name}')"
-                 onkeydown="if(event.key==='Enter'||event.key===' ')copyColorInfo('${color.hex}', '${color.name}')">
+                 title="${color.name} (${color.count}颗) — 点击替换颜色"
+                 aria-label="${color.name}，${color.count}颗"
+                 data-hex="${color.hex}"
+                 data-name="${color.name}">
                 <div class="color-swatch-inner" style="background: ${color.hex};" aria-hidden="true"></div>
                 <div class="color-swatch-info">
                     <span class="hex-code">${color.name}</span>
@@ -1165,6 +1149,17 @@ class PixelArtGenerator {
         `).join('');
 
         this.colorPalette.innerHTML = html;
+
+        // 点击色块 → 弹出替换面板
+        this.colorPalette.querySelectorAll('.color-swatch').forEach(swatch => {
+            swatch.addEventListener('click', (e) => {
+                // 如果点的是替换按钮，走按钮逻辑
+                if (e.target.closest('.swatch-replace')) return;
+                const hex = swatch.dataset.hex;
+                if (window._picker) window._picker(hex);
+            });
+        });
+
         // 替换按钮绑定事件
         this.colorPalette.querySelectorAll('.swatch-replace').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -1741,43 +1736,67 @@ document.addEventListener('DOMContentLoaded', () => {
     const gen = new PixelArtGenerator();
     window._generator = gen;
 
-    // ── 镜像按钮切换 ──
-    document.querySelectorAll('.mirror-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            this.parentElement.querySelectorAll('.mirror-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-        });
-    });
-
     // 颜色替换选择器
     window._picker = function(sourceHex) {
         var gen = window._generator;
         if (!gen || !gen.currentColors) return;
+
+        // 移除已有面板
+        var old = document.querySelector('.replace-picker-overlay');
+        if (old) old.remove();
+
+        // 收集候选颜色（所有非源颜色）
         var candidates = [];
         for (var ci = 0; ci < gen.currentColors.length; ci++) {
             var c = gen.currentColors[ci];
-            if (c.hex !== sourceHex && gen.beadCountMap.get(c.hex) > 0) {
-                candidates.push(c);
+            if (c.hex !== sourceHex) {
+                // 避免重复
+                if (!candidates.find(function(x) { return x.hex === c.hex; })) {
+                    candidates.push(c);
+                }
             }
         }
+
         if (candidates.length === 0) { showToast('没有其他颜色可替换'); return; }
+
         var srcName = '';
-        for (var ci = 0; ci < gen.currentColors.length; ci++) {
-            if (gen.currentColors[ci].hex === sourceHex) { srcName = gen.currentColors[ci].name; break; }
+        for (var ci2 = 0; ci2 < gen.currentColors.length; ci2++) {
+            if (gen.currentColors[ci2].hex === sourceHex) { srcName = gen.currentColors[ci2].name; break; }
         }
-        var msg = '将 ' + srcName + ' 替换为:';
-        for (var ci = 0; ci < candidates.length; ci++) {
-            msg += String.fromCharCode(10) + (ci+1) + '. ' + candidates[ci].name + ' (' + candidates[ci].hex + ')';
-        }
-        var choice = prompt(msg + String.fromCharCode(10,10) + '请输入编号 (1-' + candidates.length + ')');
-        if (!choice) return;
-        var idx = parseInt(choice) - 1;
-        if (idx >= 0 && idx < candidates.length) {
-            gen.replaceColor(sourceHex, candidates[idx].hex);
-            showToast('已替换颜色');
-        } else {
-            showToast('无效选择');
-        }
+
+        // 创建可视化替换面板（行内样式确保全屏居中，不受 CSS 级联影响）
+        var overlay = document.createElement('div');
+        overlay.className = 'replace-picker-overlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:20000;display:flex;align-items:center;justify-content:center;';
+
+        var itemsHtml = candidates.map(function(c) {
+            var count = gen.beadCountMap.get(c.hex) || 0;
+            return '<button class="replace-picker-item" data-hex="' + c.hex + '" style="background:' + c.hex + ';" title="' + c.name + '"><span>' + (count > 0 ? count + '颗' : '') + '</span></button>';
+        }).join('');
+
+        overlay.innerHTML = '<div class="replace-picker-box"><h4>将 <b style="color:' + sourceHex + ';">' + srcName + '</b> 替换为</h4><div class="replace-picker-grid">' + itemsHtml + '</div><button class="replace-picker-cancel">取消</button></div>';
+
+        // 点击候选颜色执行替换
+        overlay.querySelectorAll('.replace-picker-item').forEach(function(item) {
+            item.addEventListener('click', function() {
+                var targetHex = item.dataset.hex;
+                gen.replaceColor(sourceHex, targetHex);
+                showToast('已替换颜色');
+                overlay.remove();
+            });
+        });
+
+        // 取消按钮
+        overlay.querySelector('.replace-picker-cancel').addEventListener('click', function() {
+            overlay.remove();
+        });
+
+        // 点击背景关闭
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) overlay.remove();
+        });
+
+        document.body.appendChild(overlay);
     };
 
     // 点击导航链接时关闭移动端菜单    // 点击导航链接时关闭移动端菜单
@@ -1788,4 +1807,5 @@ document.addEventListener('DOMContentLoaded', () => {
             if (navMenu) navMenu.classList.remove('active');
         });
     });
+
 });
