@@ -1745,36 +1745,55 @@ document.addEventListener('DOMContentLoaded', () => {
         var old = document.querySelector('.replace-picker-overlay');
         if (old) old.remove();
 
-        // 收集候选颜色（所有非源颜色）
-        var candidates = [];
-        for (var ci = 0; ci < gen.currentColors.length; ci++) {
-            var c = gen.currentColors[ci];
-            if (c.hex !== sourceHex) {
-                // 避免重复
-                if (!candidates.find(function(x) { return x.hex === c.hex; })) {
-                    candidates.push(c);
-                }
-            }
-        }
+        // 获取当前色库及色系分组
+        var paletteKey = gen.paletteSelect ? gen.paletteSelect.value : 'mard291';
+        var paletteData = palettes[paletteKey];
+        if (!paletteData || !paletteData.series) { showToast('色库数据不可用'); return; }
 
-        if (candidates.length === 0) { showToast('没有其他颜色可替换'); return; }
-
+        var seriesKeys = Object.keys(paletteData.series);
         var srcName = '';
-        for (var ci2 = 0; ci2 < gen.currentColors.length; ci2++) {
-            if (gen.currentColors[ci2].hex === sourceHex) { srcName = gen.currentColors[ci2].name; break; }
+        for (var ci = 0; ci < gen.currentColors.length; ci++) {
+            if (gen.currentColors[ci].hex === sourceHex) { srcName = gen.currentColors[ci].name; break; }
         }
 
-        // 创建可视化替换面板（行内样式确保全屏居中，不受 CSS 级联影响）
+        // 构建色系标签
+        var tabsHtml = seriesKeys.map(function(sk) {
+            return '<button class="replace-picker-tab" data-series="' + sk + '" title="' + paletteData.series[sk].name + '">' + sk + '</button>';
+        }).join('');
+
+        // 构建分组颜色网格（排除源颜色）
+        var groupsHtml = seriesKeys.map(function(sk, idx) {
+            var series = paletteData.series[sk];
+            var colorItems = series.colors.filter(function(c) { return c.hex !== sourceHex; });
+            var gridHtml = colorItems.map(function(c) {
+                return '<button class="replace-picker-item" data-hex="' + c.hex + '" style="background:' + c.hex + ';" title="' + c.name + '"><span>' + c.name + '</span></button>';
+            }).join('');
+            return '<div class="replace-picker-series" data-series="' + sk + '"><div class="replace-picker-series-header" style="--series-color:' + (series.color || '#999') + ';">' + series.name + ' <span class="replace-picker-series-count">' + colorItems.length + '色</span></div><div class="replace-picker-grid">' + gridHtml + '</div></div>';
+        }).join('');
+
+        // 创建可视化替换面板
         var overlay = document.createElement('div');
         overlay.className = 'replace-picker-overlay';
         overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:20000;display:flex;align-items:center;justify-content:center;';
 
-        var itemsHtml = candidates.map(function(c) {
-            var count = gen.beadCountMap.get(c.hex) || 0;
-            return '<button class="replace-picker-item" data-hex="' + c.hex + '" style="background:' + c.hex + ';" title="' + c.name + '"><span>' + (count > 0 ? count + '颗' : '') + '</span></button>';
-        }).join('');
+        overlay.innerHTML =
+            '<div class="replace-picker-box">' +
+            '<h4>将 <b style="color:' + sourceHex + ';">' + srcName + '</b> 替换为 <span class="replace-picker-palette-name">' + paletteData.name + '</span></h4>' +
+            '<div class="replace-picker-tabs">' + tabsHtml + '</div>' +
+            '<div class="replace-picker-scroll">' + groupsHtml + '</div>' +
+            '<button class="replace-picker-cancel">取消</button>' +
+            '</div>';
 
-        overlay.innerHTML = '<div class="replace-picker-box"><h4>将 <b style="color:' + sourceHex + ';">' + srcName + '</b> 替换为</h4><div class="replace-picker-grid">' + itemsHtml + '</div><button class="replace-picker-cancel">取消</button></div>';
+        // 色系标签点击 → 滚动到对应分组
+        overlay.querySelectorAll('.replace-picker-tab').forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                var sk = tab.dataset.series;
+                var target = overlay.querySelector('.replace-picker-series[data-series="' + sk + '"]');
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
 
         // 点击候选颜色执行替换
         overlay.querySelectorAll('.replace-picker-item').forEach(function(item) {
@@ -1797,6 +1816,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         document.body.appendChild(overlay);
+
+        // 默认激活第一个标签
+        var firstTab = overlay.querySelector('.replace-picker-tab');
+        if (firstTab) firstTab.classList.add('active');
+
+        // 滚动监听：高亮当前可见色系的标签
+        var scrollArea = overlay.querySelector('.replace-picker-scroll');
+        var allTabs = overlay.querySelectorAll('.replace-picker-tab');
+        scrollArea.addEventListener('scroll', function() {
+            var minDist = Infinity, activeSk = null;
+            allTabs.forEach(function(tab) {
+                var sk = tab.dataset.series;
+                var el = overlay.querySelector('.replace-picker-series[data-series="' + sk + '"]');
+                if (el) {
+                    var rect = el.getBoundingClientRect();
+                    var boxRect = scrollArea.getBoundingClientRect();
+                    var dist = Math.abs(rect.top - boxRect.top);
+                    if (dist < minDist) { minDist = dist; activeSk = sk; }
+                }
+            });
+            allTabs.forEach(function(t) { t.classList.toggle('active', t.dataset.series === activeSk); });
+        });
     };
 
     // 点击导航链接时关闭移动端菜单    // 点击导航链接时关闭移动端菜单
