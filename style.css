@@ -2774,7 +2774,7 @@ body {
     background: var(--card-bg);
     cursor: pointer;
     font-family: inherit;
-    font-size: 0.82rem;
+    font-size: 0.75rem;
     font-weight: 700;
     color: var(--text-light);
     padding: 0 8px;
@@ -2804,7 +2804,7 @@ body {
 }
 .replace-picker-series:last-child { margin-bottom: 0; }
 .replace-picker-series-header {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 700;
     color: var(--series-color, var(--primary-color));
     padding: 4px 0 8px;
@@ -2850,7 +2850,7 @@ body {
     box-shadow: 0 3px 12px rgba(0,0,0,0.25);
 }
 .replace-picker-item span {
-    font-size: 8px;
+    font-size: 7px;
     font-weight: 700;
     color: #fff;
     text-shadow: 0 0 2px rgba(0,0,0,0.7), 0 0 4px rgba(0,0,0,0.5);
