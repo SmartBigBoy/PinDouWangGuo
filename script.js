@@ -1612,12 +1612,21 @@ class PixelArtGenerator {
 
     replaceColor(sourceHex, targetHex) {
         if (sourceHex === targetHex || !this.pixelData.length) return;
+
+        // 从当前色库中查找目标颜色对象（而非仅 currentColors）
+        var paletteKey = this.paletteSelect ? this.paletteSelect.value : 'mard291';
+        var flatPalette = this.palettes[paletteKey] || this.perlerColors;
+        var targetColor = null;
+        for (var i = 0; i < flatPalette.length; i++) {
+            if (flatPalette[i].hex === targetHex) { targetColor = flatPalette[i]; break; }
+        }
+        if (!targetColor) return;
+
         for (let y = 0; y < this.pixelData.length; y++) {
             for (let x = 0; x < this.pixelData[y].length; x++) {
                 const p = this.pixelData[y][x];
                 if (!p.isEmpty && p.color.hex === sourceHex) {
-                    const tc = this.currentColors.find(c => c.hex === targetHex);
-                    if (tc) p.color = tc;
+                    p.color = targetColor;
                 }
             }
         }
@@ -1630,6 +1639,19 @@ class PixelArtGenerator {
                 }
             }
         }
+        // 重建 currentColors：从 pixelData 中收集实际使用的颜色
+        var usedColors = [];
+        var seenHexes = new Set();
+        for (var y = 0; y < this.pixelData.length; y++) {
+            for (var x = 0; x < this.pixelData[y].length; x++) {
+                var px = this.pixelData[y][x];
+                if (!px.isEmpty && !seenHexes.has(px.color.hex)) {
+                    seenHexes.add(px.color.hex);
+                    usedColors.push(px.color);
+                }
+            }
+        }
+        this.currentColors = usedColors;
         this.showColorPalette(this.currentColors);
         const p = this._currentRenderParams;
         if (p) {
