@@ -776,30 +776,6 @@ body {
 }
 
 /* ===== Fullscreen title button (在「拼豆效果」标题旁) ===== */
-.label-toggle-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    margin-left: 10px;
-    padding: 4px 10px;
-    border: 1.5px solid var(--border-color);
-    border-radius: 6px;
-    background: transparent;
-    color: var(--text-light);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    vertical-align: middle;
-    transition: all 0.2s ease;
-    font-family: inherit;
-}
-.label-toggle-btn.active {
-    background: rgba(var(--primary-rgb), 0.1);
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-}
-.label-toggle-btn:hover { border-color: var(--primary-color); }
-
 .fullscreen-title-btn {
     display: inline-flex;
     align-items: center;

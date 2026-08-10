@@ -199,9 +199,10 @@ class PixelArtGenerator {
         // 色号显示切换
         const showLabelsBtn = document.getElementById('showLabelsBtn');
         if (showLabelsBtn) {
+            showLabelsBtn.style.opacity = '0.6';
             showLabelsBtn.addEventListener('click', () => {
                 this._showLabels = !this._showLabels;
-                showLabelsBtn.classList.toggle('active', this._showLabels);
+                showLabelsBtn.style.opacity = this._showLabels ? '1' : '0.6';
                 if (this.pixelData.length) {
                     const p = this._currentRenderParams;
                     if (p) this._rerenderFromData(p.pixelSize, p.gridW, p.gridH, p.coordSize);
@@ -366,7 +367,7 @@ class PixelArtGenerator {
                 const pixelSize = parseInt(this.pixelSizeSlider.value);
                 const colorCount = parseInt(this.colorCountSlider.value);
                 const gridSize = this.getGridSize();
-                const showGrid = this.showGridCheckbox ? this.showGridCheckbox.checked : true;
+                const showGrid = this.showGridCheckbox ? this.showGridCheckbox.checked : false;
                 const coordSize = 30;
 
                 const canvas = document.createElement('canvas');
