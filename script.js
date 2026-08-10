@@ -19,6 +19,7 @@ class PixelArtGenerator {
         this.beadCountMap = new Map();
         this.pixelData = [];
         this.highlightColor = null;
+        this._showLabels = false;
 
         this.palettes = {
             mard291: flattenPalette('mard291'),
@@ -193,6 +194,19 @@ class PixelArtGenerator {
 
         if (this.beadSizeSelect) {
             this.beadSizeSelect.addEventListener('change', () => this._updatePhysicalSize());
+        }
+
+        // 色号显示切换
+        const showLabelsBtn = document.getElementById('showLabelsBtn');
+        if (showLabelsBtn) {
+            showLabelsBtn.addEventListener('click', () => {
+                this._showLabels = !this._showLabels;
+                showLabelsBtn.classList.toggle('active', this._showLabels);
+                if (this.pixelData.length) {
+                    const p = this._currentRenderParams;
+                    if (p) this._rerenderFromData(p.pixelSize, p.gridW, p.gridH, p.coordSize);
+                }
+            });
         }
 
         this.generateBtn.addEventListener('click', () => {
@@ -788,7 +802,7 @@ class PixelArtGenerator {
                 }
 
                 // 非空像素格内绘制颜色编号
-                if (!isEmpty && pixelSize >= 8 && closestColor.name) {
+                if (this._showLabels && !isEmpty && pixelSize >= 8 && closestColor.name) {
                     const fontSize = Math.max(6, Math.round(pixelSize * 0.35));
                     ctx.font = `bold ${fontSize}px -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif`;
                     ctx.textAlign = 'center';
@@ -936,7 +950,7 @@ class PixelArtGenerator {
                         ctx.fillStyle = p.color.hex;
                         ctx.fillRect(cs + x * ps, cs + y * ps, ps - 1, ps - 1);
                         // 颜色编号
-                        if (ps >= 8 && p.color.name) {
+                        if (self._showLabels && ps >= 8 && p.color.name) {
                             const fz = Math.max(6, Math.round(ps * 0.35));
                             ctx.font = `bold ${fz}px -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif`;
                             ctx.textAlign = 'center';
@@ -1088,7 +1102,7 @@ class PixelArtGenerator {
                     ctx.fillRect(self._cx + x * self._px, self._cx + y * self._px, self._px - 1, self._px - 1);
                     ctx.strokeRect(self._cx + x * self._px, self._cx + y * self._px, self._px - 1, self._px - 1);
                     // 颜色编号（非空像素 + 非高亮淡化态时绘制）
-                    if (!isEmpty && self._px >= 8 && pixel.color.name && (!hexColor || isHL)) {
+                    if (self._showLabels && !isEmpty && self._px >= 8 && pixel.color.name && (!hexColor || isHL)) {
                         const fz3 = Math.max(6, Math.round(self._px * 0.35));
                         ctx.font = `bold ${fz3}px -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif`;
                         ctx.textAlign = 'center';
@@ -1835,7 +1849,7 @@ class PixelArtGenerator {
                     ctx.fillStyle = p.color.hex;
                     ctx.fillRect(coordSize + x * pixelSize, coordSize + y * pixelSize, pixelSize - 1, pixelSize - 1);
                     // 颜色编号
-                    if (pixelSize >= 8 && p.color.name) {
+                    if (this._showLabels && pixelSize >= 8 && p.color.name) {
                         const fz4 = Math.max(6, Math.round(pixelSize * 0.35));
                         ctx.font = `bold ${fz4}px -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif`;
                         ctx.textAlign = 'center';
