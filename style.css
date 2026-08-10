@@ -355,10 +355,14 @@ body {
     display: none;
 }
 
-/* 已加载图片时：恢复正常边框 */
+/* 已加载图片时：恢复正常边框，file input 不拦截点击 */
 .image-container.has-image {
     border: 2px solid var(--border-color);
     cursor: default;
+}
+
+.image-container.has-image > input[type="file"] {
+    pointer-events: none;
 }
 
 .image-container.has-image:hover {
