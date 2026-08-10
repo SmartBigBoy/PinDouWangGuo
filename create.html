@@ -53,6 +53,17 @@
             overflow: hidden;
         }
 
+        /* ===== 右侧面板 ===== */
+        .create-sidebar-right {
+            width: 260px;
+            min-width: 260px;
+            background: #f8f9fc;
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
         .sidebar-scroll {
             flex: 1;
             overflow-y: auto;
@@ -85,6 +96,17 @@
             background: var(--bg-gradient);
             border-color: var(--primary-color);
             color: white;
+        }
+        .color-cell-label {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1;
+            pointer-events: none;
         }
 
         /* 设置行（网格+色卡） */
@@ -153,6 +175,7 @@
             border: 2px solid transparent;
             cursor: pointer;
             transition: all 0.12s ease;
+            position: relative;
         }
         .palette-grid .color-cell:hover {
             transform: scale(1.25);
@@ -258,6 +281,19 @@
             box-shadow: 0 4px 24px rgba(0,0,0,0.1);
             border-radius: 8px;
         }
+        .create-zoom-badge {
+            position: absolute;
+            top: 28px;
+            right: 28px;
+            background: rgba(26,26,46,0.85);
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            pointer-events: none;
+            z-index: 10;
+        }
         .canvas-tip {
             color: var(--text-muted);
             font-size: 1rem;
@@ -315,18 +351,26 @@
             }
         }
 
-        /* ===== 响应式: 平板纵向 / 小平板 ===== */
+        /* ===== 响应式: 平板 ===== */
+        @media (max-width: 1100px) {
+            .create-sidebar { width: 260px; min-width: 260px; }
+            .create-sidebar-right { width: 230px; min-width: 230px; }
+        }
+
+        /* ===== 响应式: 小平板 / 手机 ===== */
         @media (max-width: 900px) {
+            .create-wrapper { flex-wrap: wrap; height: auto; }
             .create-sidebar {
-                max-height: 40vh;
+                width: 50%; min-width: 0; max-height: 40vh;
             }
+            .create-sidebar-right {
+                width: 50%; min-width: 0; max-height: 40vh;
+                border-left: 1px solid var(--border-color);
+            }
+            .create-canvas-area { min-height: 55vh; padding: 10px; width: 100%; }
             .palette-grid {
-                grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
-                max-height: 130px;
-            }
-            .create-canvas-area {
-                min-height: 55vh;
-                padding: 10px;
+                grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+                max-height: 100px;
             }
         }
 
@@ -334,16 +378,17 @@
         @media (max-width: 640px) {
             .collapse-body.collapsed-mobile { max-height: 0; }
             .collapse-header.collapsed-mobile::after { transform: rotate(-90deg); }
-            .create-wrapper { margin-top: 50px; min-height: calc(100vh - 50px); }
-            .create-sidebar { max-height: 40vh; }
+            .create-wrapper { margin-top: 50px; min-height: auto; flex-wrap: wrap; }
+            .create-sidebar { width: 100%; max-height: 35vh; border-right: none; border-bottom: 1px solid var(--border-color); }
+            .create-sidebar-right { width: 100%; max-height: 35vh; border-left: none; }
             .sidebar-scroll { padding: 8px 10px; }
             .tool-bar .tool-btn { font-size: 0.72rem; padding: 6px 2px; }
             .palette-grid {
                 grid-template-columns: repeat(auto-fill, minmax(28px, 1fr));
                 gap: 2px;
-                max-height: 100px;
+                max-height: 80px;
             }
-            .create-canvas-area { min-height: 55vh; padding: 8px; }
+            .create-canvas-area { min-height: 50vh; padding: 8px; width: 100%; }
             .current-color-bar { padding: 6px 10px; }
             .current-color-swatch { width: 26px; height: 26px; }
         }
@@ -362,6 +407,7 @@
                     <button class="tool-btn active" data-tool="paint" id="paintTool">✏️ 涂色</button>
                     <button class="tool-btn" data-tool="eraser" id="eraserTool">🧹 擦除</button>
                     <button class="tool-btn" data-tool="fill" id="fillTool">🪣 填充</button>
+                    <button class="tool-btn active" id="labelToggleBtn">🔤 显示</button>
                 </div>
 
                 <!-- 设置 -->
@@ -388,15 +434,6 @@
                     <input type="number" id="editorGridH" min="5" max="200" value="20">
                     <span style="font-size:0.75rem;color:var(--text-muted)">(5-200)</span>
                 </div>
-                <div class="settings-row">
-                    <select id="editorBeadSize">
-                        <option value="5">5mm 标准</option>
-                        <option value="2.6">2.6mm Mini</option>
-                        <option value="8">8mm 大颗粒</option>
-                    </select>
-                    <span id="editorPhysicalSize" style="font-size:0.75rem;color:var(--text-muted);line-height:32px">—</span>
-                </div>
-
                 <!-- 当前颜色 -->
                 <div class="current-color-bar">
                     <div class="current-color-swatch" id="currentColorSwatch" style="background:#e0e0e0"></div>
@@ -405,6 +442,23 @@
 
                 <!-- 色板 -->
                 <div class="palette-grid" id="editorPaletteGrid"></div>
+
+            </div>
+        </div>
+
+        <!-- 中间画布 -->
+        <div class="create-canvas-area" id="editorCanvasArea">
+            <canvas id="editorCanvas"></canvas>
+            <div class="create-zoom-badge" id="createZoomBadge">100%</div>
+            <div class="canvas-tip" id="canvasTip" style="display:none">
+                <span>🖌️</span>
+                <p>选择颜色后点击格子开始涂色</p>
+            </div>
+        </div>
+
+        <!-- 右侧面板：导入、统计、操作 -->
+        <div class="create-sidebar-right">
+            <div class="sidebar-scroll">
 
                 <!-- 导入图片（可折叠） -->
                 <div class="collapse-header" id="importHeader">📥 导入图片</div>
@@ -437,15 +491,6 @@
                     <button class="btn btn-secondary" id="editorClearBtn">🗑️ 清空</button>
                 </div>
 
-            </div>
-        </div>
-
-        <!-- 右侧画布 -->
-        <div class="create-canvas-area" id="editorCanvasArea">
-            <canvas id="editorCanvas"></canvas>
-            <div class="canvas-tip" id="canvasTip" style="display:none">
-                <span>🖌️</span>
-                <p>选择颜色后点击格子开始涂色</p>
             </div>
         </div>
     </div>

@@ -82,8 +82,8 @@ const SHARED = {
                 <span class="brand-icon" aria-hidden="true">🎨</span>
                 <span class="brand-text">拼豆王国</span>
             </div>
-            <p>© 2025 拼豆王国 | 使用时请确保图片版权合规</p>
-      
+            <p>© 2026 拼豆王国 | 使用时请确保图片版权合规</p>
+            <p class="footer-contact">📧 联系邮箱：<a href="mailto:pindouwangguo@agent.qq.com">pindouwangguo@agent.qq.com</a></p>
         </div>
     </footer>
 

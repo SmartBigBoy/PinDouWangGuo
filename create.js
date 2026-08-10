@@ -26,6 +26,10 @@ class PixelEditor {
     this.isDrawing = false;
     this.cellSize = 30;
     this._bbox = null;
+    this._zoomFactor = 1.0;
+    this._touchPinchDist = 0;
+    this._touchPinchCS = 0;
+    this._showCellLabels = true;
 
     this.initElements();
     this.setupEventListeners();
@@ -109,6 +113,16 @@ class PixelEditor {
       }
     });
 
+    // 色号标签开关
+    const labelToggle = document.getElementById('labelToggleBtn');
+    if (labelToggle) {
+      labelToggle.addEventListener('click', () => {
+        this._showCellLabels = !this._showCellLabels;
+        labelToggle.classList.toggle('active', this._showCellLabels);
+        this.render();
+      });
+    }
+
     // 色卡切换
     this.paletteSelect.addEventListener('change', () => {
       this.loadPalette();
@@ -134,7 +148,14 @@ class PixelEditor {
     // 画布触控事件
     this.canvas.addEventListener('touchstart', (e) => { e.preventDefault(); this._onTouchStart(e); }, { passive: false });
     this.canvas.addEventListener('touchmove', (e) => { e.preventDefault(); this._onTouchMove(e); }, { passive: false });
-    this.canvas.addEventListener('touchend', (e) => { e.preventDefault(); this._onPointerUp(); }, { passive: false });
+    this.canvas.addEventListener('touchend', (e) => { e.preventDefault(); this._onTouchEnd(e); }, { passive: false });
+
+    // 滚轮缩放
+    this.canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.08 : 0.08;
+      this._zoomBy(delta);
+    }, { passive: false });
 
     // 上传图片
     this.uploadArea.addEventListener('click', () => this.imageInput.click());
@@ -268,7 +289,7 @@ class PixelEditor {
     const sidebarW = isMobile ? 0 : 310;
     const headerH = 60;
     const pad = isMobile ? 60 : 40;
-    this.coordSize = Math.max(16, Math.min(28, Math.floor(this.cellSize * 0.9))); // 坐标区宽度
+    this.coordSize = Math.max(16, Math.min(28, Math.floor(this.cellSize * 0.9)));
     const availW = window.innerWidth - sidebarW - pad - this.coordSize;
     const availH = window.innerHeight - headerH - pad - this.coordSize;
     this.cellSize = Math.max(10, Math.min(
@@ -276,10 +297,35 @@ class PixelEditor {
       Math.floor(availH / h),
       50
     ));
+    this._baseCellSize = this.cellSize;
+    this._applyZoom();
     this.coordSize = Math.max(16, Math.min(28, Math.floor(this.cellSize * 0.9)));
     this.canvas.width = w * this.cellSize + this.coordSize;
     this.canvas.height = h * this.cellSize + this.coordSize;
     if (this.canvasTip) this.canvasTip.style.display = 'none';
+  }
+
+  _applyZoom() {
+    this.cellSize = Math.max(10, Math.min(80, Math.round(this._baseCellSize * this._zoomFactor)));
+    this._updateZoomBadge();
+  }
+
+  _zoomBy(delta) {
+    this._zoomFactor = Math.max(0.3, Math.min(3.0, this._zoomFactor + delta));
+    if (this._baseCellSize) {
+      this.cellSize = Math.max(10, Math.min(80, Math.round(this._baseCellSize * this._zoomFactor)));
+    }
+    const w = this.gridWidth, h = this.gridHeight;
+    this.coordSize = Math.max(16, Math.min(28, Math.floor(this.cellSize * 0.9)));
+    this.canvas.width = w * this.cellSize + this.coordSize;
+    this.canvas.height = h * this.cellSize + this.coordSize;
+    this.render();
+    this._updateZoomBadge();
+  }
+
+  _updateZoomBadge() {
+    const badge = document.getElementById('createZoomBadge');
+    if (badge) badge.textContent = Math.round(this._zoomFactor * 100) + '%';
   }
 
   // ============ 工具 ============
@@ -348,6 +394,14 @@ class PixelEditor {
   }
 
   _onTouchStart(e) {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      this._touchPinchDist = Math.sqrt(dx * dx + dy * dy);
+      this._touchPinchCS = this.cellSize;
+      this.isDrawing = false;
+      return;
+    }
     const touch = e.touches[0];
     const { x, y } = this._getCellFromEvent(touch.clientX, touch.clientY);
     if (x < 0 || x >= this.gridWidth || y < 0 || y >= this.gridHeight) return;
@@ -356,10 +410,35 @@ class PixelEditor {
   }
 
   _onTouchMove(e) {
+    if (e.touches.length === 2 && this._touchPinchDist > 0) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const scale = dist / this._touchPinchDist;
+      const newCS = Math.max(10, Math.min(80, Math.round(this._touchPinchCS * scale)));
+      if (newCS !== this.cellSize) {
+        this.cellSize = newCS;
+        this._zoomFactor = this.cellSize / this._baseCellSize;
+        const w = this.gridWidth, h = this.gridHeight;
+        this.coordSize = Math.max(16, Math.min(28, Math.floor(this.cellSize * 0.9)));
+        this.canvas.width = w * this.cellSize + this.coordSize;
+        this.canvas.height = h * this.cellSize + this.coordSize;
+        this.render();
+        this._updateZoomBadge();
+      }
+      return;
+    }
     const touch = e.touches[0];
     const { x, y } = this._getCellFromEvent(touch.clientX, touch.clientY);
     if (x < 0 || x >= this.gridWidth || y < 0 || y >= this.gridHeight) return;
     if (this.isDrawing) this._applyTool(x, y);
+  }
+
+  _onTouchEnd(e) {
+    if (e.touches.length === 0) {
+      this._touchPinchDist = 0;
+    }
+    if (e.touches.length < 2) this._onPointerUp();
   }
 
   _applyTool(x, y) {
@@ -446,6 +525,19 @@ class PixelEditor {
         if (cell) {
           ctx.fillStyle = cell.hex;
           ctx.fillRect(cs + x * s, cs + y * s, s, s);
+          // 色号标签
+          if (this._showCellLabels && s >= 11 && cell.name) {
+            const fz = Math.max(6, Math.min(Math.floor(s * 0.35), 12));
+            ctx.font = `bold ${fz}px -apple-system, 'PingFang SC', sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const hr = parseInt(cell.hex.slice(1,3),16);
+            const hg = parseInt(cell.hex.slice(3,5),16);
+            const hb = parseInt(cell.hex.slice(5,7),16);
+            const lum = (0.299*hr + 0.587*hg + 0.114*hb)/255;
+            ctx.fillStyle = lum > 0.55 ? '#000' : '#fff';
+            ctx.fillText(cell.name, cs + x*s + s/2, cs + y*s + s/2);
+          }
         }
       }
     }
@@ -543,6 +635,16 @@ class PixelEditor {
       div.title = `${c.name} (${c.hex})`;
       div.dataset.hex = c.hex;
       div.dataset.name = c.name;
+      // 色号标签
+      const span = document.createElement('span');
+      span.className = 'color-cell-label';
+      span.textContent = c.name;
+      const hr = parseInt(c.hex.slice(1,3),16);
+      const hg = parseInt(c.hex.slice(3,5),16);
+      const hb = parseInt(c.hex.slice(5,7),16);
+      const lum = (0.299*hr + 0.587*hg + 0.114*hb)/255;
+      span.style.color = lum > 0.55 ? '#000' : '#fff';
+      div.appendChild(span);
       div.addEventListener('click', () => this.selectColor(c.hex, c.name));
       this.paletteGrid.appendChild(div);
     }

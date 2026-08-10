@@ -60,6 +60,13 @@ class PixelArtGenerator {
         return count;
     }
 
+    _updateSliderTrack(slider) {
+        const min = slider.min || 0;
+        const max = slider.max || 100;
+        const pct = ((slider.value - min) / (max - min)) * 100;
+        slider.style.setProperty('--pct', pct + '%');
+    }
+
     rgbToLab(r, g, b) {
         let x, y, z;
         r /= 255; g /= 255; b /= 255;
@@ -144,11 +151,13 @@ class PixelArtGenerator {
 
         this.pixelSizeSlider.addEventListener('input', (e) => {
             this.pixelSizeValue.textContent = e.target.value;
+            this._updateSliderTrack(e.target);
             this.scheduleAutoGenerate();
         });
 
         this.colorCountSlider.addEventListener('input', (e) => {
             this.colorCountValue.textContent = e.target.value;
+            this._updateSliderTrack(e.target);
             this.scheduleAutoGenerate();
         });
 
@@ -170,7 +179,7 @@ class PixelArtGenerator {
         }
 
         this.gridSizeSelect.addEventListener('change', (e) => {
-            this.customGridDiv.style.display = e.target.value === 'custom' ? 'flex' : 'none';
+            this.customGridDiv.style.display = e.target.value === 'custom' ? 'inline-flex' : 'none';
             this.autoAdjustPixelSize();
             this.scheduleAutoGenerate();
         });
@@ -312,9 +321,9 @@ class PixelArtGenerator {
         let suggested;
         if (maxDim <= 15) suggested = 30;
         else if (maxDim <= 32) suggested = 18;
-        else if (maxDim <= 64) suggested = 10;
-        else if (maxDim <= 104) suggested = 8;
-        else suggested = 5;
+        else if (maxDim <= 50) suggested = 12;
+        else if (maxDim <= 80) suggested = 10;
+        else suggested = 8;
 
         this.pixelSizeSlider.value = suggested;
         this.pixelSizeValue.textContent = suggested;
@@ -336,7 +345,7 @@ class PixelArtGenerator {
         if (this._generating) return;
         this._generating = true;
         this.generateBtn.disabled = true;
-        this.generateBtn.textContent = '⏳ 生成中...';
+        this.generateBtn.textContent = '⏳ 生成中';
 
         setTimeout(() => {
             try {
@@ -344,7 +353,7 @@ class PixelArtGenerator {
                 const colorCount = parseInt(this.colorCountSlider.value);
                 const gridSize = this.getGridSize();
                 const showGrid = this.showGridCheckbox ? this.showGridCheckbox.checked : true;
-                const coordSize = 60;
+                const coordSize = 30;
 
                 const canvas = document.createElement('canvas');
                 canvas.width = gridSize.width * pixelSize + coordSize * 2;
@@ -381,7 +390,7 @@ class PixelArtGenerator {
             } finally {
                 this._generating = false;
                 this.generateBtn.disabled = false;
-                this.generateBtn.textContent = '🎨 生成图纸';
+                this.generateBtn.textContent = '🎨 生成';
             }
         }, 50);
     }
@@ -614,28 +623,29 @@ class PixelArtGenerator {
         ctx.fillRect(offsetX, offsetY + coordSize + h * pixelSize, w * pixelSize + coordSize * 2, coordSize);
     }
 
-    _drawGridCoords(ctx, w, h, pixelSize, coordSize, fontSize = 22, offsetX = 0, offsetY = 0) {
-        // 动态字号：保底 fontSize，上限 32px
-        const dynamicSize = Math.max(fontSize, Math.min(32, Math.floor(pixelSize * 0.55)));
+    _drawGridCoords(ctx, w, h, pixelSize, coordSize, fontSize = 14, offsetX = 0, offsetY = 0) {
+        // 字号：自适应，不超过边框的 65%
+        const maxByBorder = Math.floor(coordSize * 0.6);
+        const dynamicSize = Math.max(10, Math.min(maxByBorder, Math.floor(pixelSize * 0.6)));
         // 步长：小网格（<600格）每格显示，中网格每5，大网格每10
         const total = w * h;
         const step = total < 600 ? 1 : (total < 3000 ? 5 : 10);
 
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'center';
-        ctx.font = 'bold ' + dynamicSize + 'px Arial, sans-serif';
+        ctx.font = '600 ' + dynamicSize + 'px -apple-system, "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
         for (let x = step - 1; x < w; x += step) {
             const tx = offsetX + coordSize + x * pixelSize + pixelSize / 2;
             const ty = offsetY + coordSize / 2;
-            ctx.fillStyle = '#000000';
+            ctx.fillStyle = '#333333';
             ctx.fillText(x + 1, tx, ty);
         }
         ctx.textAlign = 'right';
         for (let y = step - 1; y < h; y += step) {
-            const tx = offsetX + coordSize - 8;
+            const tx = offsetX + coordSize - 5;
             const ty = offsetY + coordSize + y * pixelSize + pixelSize / 2;
-            ctx.font = 'bold ' + dynamicSize + 'px Arial, sans-serif';
-            ctx.fillStyle = '#000000';
+            ctx.font = '600 ' + dynamicSize + 'px -apple-system, "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
+            ctx.fillStyle = '#333333';
             ctx.fillText(y + 1, tx, ty);
         }
     }
@@ -672,8 +682,8 @@ class PixelArtGenerator {
     }
 
     _drawCenterCross(ctx, w, h, pixelSize, coordSize, offsetX = 0, offsetY = 0) {
-        ctx.strokeStyle = '#ff0000';
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#e53935';
+        ctx.lineWidth = 1.5;
         const midX = Math.floor(w / 2);
         const midY = Math.floor(h / 2);
         ctx.beginPath();
@@ -686,7 +696,7 @@ class PixelArtGenerator {
         ctx.stroke();
     }
 
-    _drawGridBase(ctx, w, h, pixelSize, coordSize, offsetX = 0, offsetY = 0, fontSize = 22) {
+    _drawGridBase(ctx, w, h, pixelSize, coordSize, offsetX = 0, offsetY = 0, fontSize = 14) {
         this._drawGridBackground(ctx, w, h, pixelSize, coordSize, offsetX, offsetY);
         this._drawGridCoords(ctx, w, h, pixelSize, coordSize, fontSize, offsetX, offsetY);
         this._drawGridLines(ctx, w, h, pixelSize, coordSize, offsetX, offsetY);
@@ -717,7 +727,7 @@ class PixelArtGenerator {
     }
 
     drawPixelArt(ctx, pixels, colors, width, height, pixelSize, showGrid, highlightColor = null) {
-        const coordSize = 60;
+        const coordSize = 30;
 
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         this._drawGridBase(ctx, width, height, pixelSize, coordSize);
@@ -775,6 +785,25 @@ class PixelArtGenerator {
                     }
                     ctx.strokeRect(coordSize + x * pixelSize, coordSize + y * pixelSize, pixelSize - 1, pixelSize - 1);
                     ctx.globalAlpha = 1.0;
+                }
+
+                // 非空像素格内绘制颜色编号
+                if (!isEmpty && pixelSize >= 8 && closestColor.name) {
+                    const fontSize = Math.max(6, Math.round(pixelSize * 0.35));
+                    ctx.font = `bold ${fontSize}px -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    // 根据背景色亮度选黑/白文字
+                    const hr = parseInt(closestColor.hex.slice(1, 3), 16);
+                    const hg = parseInt(closestColor.hex.slice(3, 5), 16);
+                    const hb = parseInt(closestColor.hex.slice(5, 7), 16);
+                    const lum = (0.299 * hr + 0.587 * hg + 0.114 * hb) / 255;
+                    ctx.fillStyle = lum > 0.55 ? '#000000' : '#ffffff';
+                    ctx.fillText(
+                        closestColor.name,
+                        coordSize + x * pixelSize + pixelSize / 2,
+                        coordSize + y * pixelSize + pixelSize / 2
+                    );
                 }
 
                 row.push({ color: closestColor, x, y, isEmpty });
@@ -848,6 +877,7 @@ class PixelArtGenerator {
                 <canvas id="pixelatedCanvas" width="${canvas.width}" height="${canvas.height}" style="cursor: crosshair; display: block; image-rendering: pixelated; image-rendering: crisp-edges;"></canvas>
                 <div id="coordTooltip" style="position: absolute; background: rgba(26, 26, 46, 0.95); color: #f5f5f5; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; pointer-events: none; display: none; z-index: 100; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.2);"></div>
                 <button class="fs-exit" id="fsExit" title="退出全屏 (Esc)">✕</button>
+                <div class="fs-zoom-badge" id="fsZoomBadge" style="position: absolute; top: 12px; right: 52px; background: rgba(26,26,46,0.85); color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; pointer-events: none; z-index: 50;">100%</div>
                 <div class="fs-color-bar" id="fsColorBar">
                     <button class="fs-btn" id="fsPrev">◀</button>
                     <div class="fs-color-info">
@@ -887,48 +917,68 @@ class PixelArtGenerator {
             fullscreenBtn.onclick = toggle;
             destCanvas.ondblclick = toggle;
 
-            // 全屏时重新高分辨率绘制
-            function renderFullRes(entering) {
+            // 全屏渲染（使用当前 self._px / self._cx）
+            function renderFullRes() {
                 const gW = width, gH = height;
                 const pd = self.pixelData;
                 if (!pd || !pd.length) return;
+                const ps = self._px, cs = self._cx;
 
-                if (entering) {
-                    self._origPx = self._px;
-                    self._origCx = self._cx;
-                    // 根据视口计算最佳像素尺寸（保证画布刚好填满屏幕）
-                    const newCS = 48;
-                    const maxW = window.innerWidth - newCS - 16;
-                    const maxH = window.innerHeight - newCS - 68;
-                    const newPS = Math.max(10, Math.min(Math.floor(maxW / gW), Math.floor(maxH / gH)));
-                    self._px = newPS;
-                    self._cx = newCS;
-                } else {
-                    self._px = self._origPx || self._px;
-                    self._cx = self._origCx || self._cx;
-                }
-
-                destCanvas.width = gW * self._px + self._cx * 2;
-                destCanvas.height = gH * self._px + self._cx * 2;
+                destCanvas.width = gW * ps + cs * 2;
+                destCanvas.height = gH * ps + cs * 2;
                 const ctx = destCanvas.getContext('2d');
                 ctx.imageSmoothingEnabled = false;
-                self._drawGridBase(ctx, gW, gH, self._px, self._cx);
+                self._drawGridBase(ctx, gW, gH, ps, cs);
                 for (let y = 0; y < gH && y < pd.length; y++) {
                     for (let x = 0; x < gW && x < pd[y].length; x++) {
                         const p = pd[y][x];
                         if (!p || p.isEmpty) continue;
                         ctx.fillStyle = p.color.hex;
-                        ctx.fillRect(self._cx + x * self._px, self._cx + y * self._px, self._px - 1, self._px - 1);
+                        ctx.fillRect(cs + x * ps, cs + y * ps, ps - 1, ps - 1);
+                        // 颜色编号
+                        if (ps >= 8 && p.color.name) {
+                            const fz = Math.max(6, Math.round(ps * 0.35));
+                            ctx.font = `bold ${fz}px -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif`;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            const hr2 = parseInt(p.color.hex.slice(1, 3), 16);
+                            const hg2 = parseInt(p.color.hex.slice(3, 5), 16);
+                            const hb2 = parseInt(p.color.hex.slice(5, 7), 16);
+                            const lum2 = (0.299 * hr2 + 0.587 * hg2 + 0.114 * hb2) / 255;
+                            ctx.fillStyle = lum2 > 0.55 ? '#000000' : '#ffffff';
+                            ctx.fillText(p.color.name, cs + x * ps + ps / 2, cs + y * ps + ps / 2);
+                        }
                     }
                 }
-                self._drawGridBorder(ctx, gW, gH, self._px, self._cx);
+                self._drawGridBorder(ctx, gW, gH, ps, cs);
             }
 
             const onFSChange = () => {
                 const inFs = isFS();
                 fullscreenBtn.innerHTML = inFs ? '✕ 退出' : '⛶ 全屏';
                 fullscreenBtn.title = inFs ? '退出全屏' : '全屏查看';
-                renderFullRes(inFs);
+                if (inFs) {
+                    // 进入全屏：保存原尺寸，计算最佳适配尺寸
+                    self._origPx = self._px;
+                    self._origCx = self._cx;
+                    self._zoomPx = self._px;
+                    self._zoomCx = self._cx;
+                    const estCS = 48;
+                    const maxW = window.innerWidth - estCS - 16;
+                    const maxH = window.innerHeight - estCS - 68;
+                    const newPS = Math.max(10, Math.min(Math.floor(maxW / width), Math.floor(maxH / height)));
+                    const newCS = 30;
+                    self._px = newPS;
+                    self._cx = newCS;
+                    self._zoomPx = newPS;
+                    self._zoomCx = newCS;
+                } else {
+                    // 退出全屏：恢复原尺寸
+                    self._px = self._origPx || self._px;
+                    self._cx = self._origCx || self._cx;
+                }
+                renderFullRes();
+                updateZoomBadge();
             };
             // 清除旧监听器，避免多次 showPixelArt 造成泄漏
             if (this._fsHandler) {
@@ -938,6 +988,58 @@ class PixelArtGenerator {
             this._fsHandler = onFSChange;
             document.addEventListener('fullscreenchange', this._fsHandler);
             document.addEventListener('webkitfullscreenchange', this._fsHandler);
+
+            // 缩放比例显示更新
+            function updateZoomBadge() {
+                const badge = document.getElementById('fsZoomBadge');
+                if (badge && self._zoomPx) {
+                    const pct = Math.round(self._px / self._zoomPx * 100);
+                    badge.textContent = pct + '%';
+                }
+            }
+
+            // 全屏模式：鼠标滚轮缩放
+            wrapper.addEventListener('wheel', (e) => {
+                if (!isFS()) return;
+                e.preventDefault();
+                const zoomIn = e.deltaY < 0;
+                const step = self._px >= 40 ? 5 : (self._px >= 20 ? 3 : 2);
+                const newPS = Math.max(5, Math.min(100, self._px + (zoomIn ? step : -step)));
+                if (newPS !== self._px) {
+                    self._px = newPS;
+                    self._cx = 30;
+                    renderFullRes();
+                    updateZoomBadge();
+                }
+            }, { passive: false });
+
+            // 全屏模式：触摸双指缩放
+            let touchDist0 = 0, touchPx0 = 0;
+            wrapper.addEventListener('touchstart', (e) => {
+                if (!isFS() || e.touches.length !== 2) return;
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                touchDist0 = Math.sqrt(dx * dx + dy * dy);
+                touchPx0 = self._px;
+            }, { passive: true });
+            wrapper.addEventListener('touchmove', (e) => {
+                if (!isFS() || e.touches.length !== 2 || touchDist0 <= 0) return;
+                e.preventDefault();
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const scale = dist / touchDist0;
+                const newPS = Math.max(5, Math.min(100, Math.round(touchPx0 * scale)));
+                if (newPS !== self._px) {
+                    self._px = newPS;
+                    self._cx = 30;
+                    renderFullRes();
+                    updateZoomBadge();
+                }
+            }, { passive: false });
+            wrapper.addEventListener('touchend', () => {
+                touchDist0 = 0;
+            });
         }
 
         // ========== 逐色导航（全屏底部） ==========
@@ -951,9 +1053,15 @@ class PixelArtGenerator {
         // 核心重绘函数（提取自 handleCellClick）
         function redrawWithHighlight(hexColor) {
             self.highlightColor = hexColor || null;
+            const ps = self._px, cs = self._cx;
+            // 确保画布尺寸匹配当前缩放
+            if (destCanvas.width !== width * ps + cs * 2 || destCanvas.height !== height * ps + cs * 2) {
+                destCanvas.width = width * ps + cs * 2;
+                destCanvas.height = height * ps + cs * 2;
+            }
             const ctx = destCanvas.getContext('2d');
             ctx.clearRect(0, 0, destCanvas.width, destCanvas.height);
-            self._drawGridBase(ctx, width, height, self._px, self._cx);
+            self._drawGridBase(ctx, width, height, ps, cs);
 
             for (let y = 0; y < height; y++) {
                 for (let x = 0; x < width; x++) {
@@ -979,6 +1087,19 @@ class PixelArtGenerator {
                     }
                     ctx.fillRect(self._cx + x * self._px, self._cx + y * self._px, self._px - 1, self._px - 1);
                     ctx.strokeRect(self._cx + x * self._px, self._cx + y * self._px, self._px - 1, self._px - 1);
+                    // 颜色编号（非空像素 + 非高亮淡化态时绘制）
+                    if (!isEmpty && self._px >= 8 && pixel.color.name && (!hexColor || isHL)) {
+                        const fz3 = Math.max(6, Math.round(self._px * 0.35));
+                        ctx.font = `bold ${fz3}px -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        const hr3 = parseInt(pixel.color.hex.slice(1, 3), 16);
+                        const hg3 = parseInt(pixel.color.hex.slice(3, 5), 16);
+                        const hb3 = parseInt(pixel.color.hex.slice(5, 7), 16);
+                        const lum3 = (0.299 * hr3 + 0.587 * hg3 + 0.114 * hb3) / 255;
+                        ctx.fillStyle = lum3 > 0.55 ? '#000000' : '#ffffff';
+                        ctx.fillText(pixel.color.name, self._cx + x * self._px + self._px / 2, self._cx + y * self._px + self._px / 2);
+                    }
                 }
             }
             ctx.globalAlpha = 1.0;
@@ -1249,7 +1370,7 @@ class PixelArtGenerator {
         const beadMM = parseFloat(this.beadSizeSelect?.value || 5);
         const bbox = this._bbox;
         if (!bbox || bbox.maxX < 0) {
-            if (this.physicalSizeEl) this.physicalSizeEl.textContent = '—';
+            if (this.physicalSizeEl) { this.physicalSizeEl.style.display = 'none'; }
             if (this.physicalDimensionsEl) this.physicalDimensionsEl.textContent = '—';
             return;
         }
@@ -1258,7 +1379,7 @@ class PixelArtGenerator {
         const wCM = ((wBeads * beadMM) / 10).toFixed(1);
         const hCM = ((hBeads * beadMM) / 10).toFixed(1);
         const label = `${wBeads}×${hBeads} 豆  ${wCM}×${hCM}cm`;
-        if (this.physicalSizeEl) this.physicalSizeEl.textContent = label;
+        if (this.physicalSizeEl) { this.physicalSizeEl.textContent = label; this.physicalSizeEl.style.display = ''; }
         if (this.physicalDimensionsEl) this.physicalDimensionsEl.textContent = `${wCM}×${hCM}cm`;
     }
 
@@ -1713,6 +1834,19 @@ class PixelArtGenerator {
                 if (p && !p.isEmpty) {
                     ctx.fillStyle = p.color.hex;
                     ctx.fillRect(coordSize + x * pixelSize, coordSize + y * pixelSize, pixelSize - 1, pixelSize - 1);
+                    // 颜色编号
+                    if (pixelSize >= 8 && p.color.name) {
+                        const fz4 = Math.max(6, Math.round(pixelSize * 0.35));
+                        ctx.font = `bold ${fz4}px -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        const hr4 = parseInt(p.color.hex.slice(1, 3), 16);
+                        const hg4 = parseInt(p.color.hex.slice(3, 5), 16);
+                        const hb4 = parseInt(p.color.hex.slice(5, 7), 16);
+                        const lum4 = (0.299 * hr4 + 0.587 * hg4 + 0.114 * hb4) / 255;
+                        ctx.fillStyle = lum4 > 0.55 ? '#000000' : '#ffffff';
+                        ctx.fillText(p.color.name, coordSize + x * pixelSize + pixelSize / 2, coordSize + y * pixelSize + pixelSize / 2);
+                    }
                 }
             }
         }
@@ -1740,7 +1874,7 @@ class PixelArtGenerator {
         this.highlightColor = null;
         this._bbox = null;
         clearTimeout(this._autoGenTimer);
-        if (this.physicalSizeEl) this.physicalSizeEl.textContent = '—';
+        if (this.physicalSizeEl) { this.physicalSizeEl.style.display = 'none'; }
         if (this.physicalDimensionsEl) this.physicalDimensionsEl.textContent = '—';
 
         if (this.originalImageContainer) {
