@@ -888,8 +888,8 @@ class PixelArtGenerator {
         self._px = pixelSize;
         self._cx = coordSize;
         this.pixelatedContainer.innerHTML = `
-            <div class="pixel-canvas-wrapper" style="position: relative; display: inline-block;">
-                <canvas id="pixelatedCanvas" width="${canvas.width}" height="${canvas.height}" style="cursor: crosshair; display: block; image-rendering: pixelated; image-rendering: crisp-edges;"></canvas>
+            <div class="pixel-canvas-wrapper" style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                <canvas id="pixelatedCanvas" width="${canvas.width}" height="${canvas.height}" style="cursor: crosshair; max-width: 100%; max-height: 100%; image-rendering: pixelated; image-rendering: crisp-edges;"></canvas>
                 <div id="coordTooltip" style="position: absolute; background: rgba(26, 26, 46, 0.95); color: #f5f5f5; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; pointer-events: none; display: none; z-index: 100; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.2);"></div>
                 <button class="fs-exit" id="fsExit" title="退出全屏 (Esc)">✕</button>
                 <div class="fs-zoom-badge" id="fsZoomBadge" style="position: absolute; top: 12px; right: 52px; background: rgba(26,26,46,0.85); color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; pointer-events: none; z-index: 50;">100%</div>
