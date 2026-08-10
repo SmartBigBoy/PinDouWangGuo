@@ -10,3 +10,26 @@ function flattenPalette(paletteName) {
     }
     return colors;
 }
+
+class PixelArtGenerator {
+    constructor() {
+        this.originalImage = null;
+        this.pixelCanvas = null;
+        this.currentColors = [];
+        this.beadCountMap = new Map();
+        this.pixelData = [];
+        this.highlightColor = null;
+
+        this.palettes = {
+            mard291: flattenPalette('mard291'),
+            mard221: flattenPalette('mard221'),
+            artkal: flattenPalette('artkal'),
+            artkalMini: flattenPalette('artkalMini'),
+            perler: flattenPalette('perler'),
+            hama: flattenPalette('hama')
+        };
+        this.perlerColors = this.palettes.mard291;
+        
+        this.initElements();
+        this.setupEventListeners();
+    }
