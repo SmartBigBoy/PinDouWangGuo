@@ -7,7 +7,7 @@
 }
 
 :root {
-    /* -- 雾石灰  Violet-Gray -- */
+    /* ── 雾石灰 · Violet-Gray 极简配色 ── */
     --primary-color: #7C7FB3;
     --primary-rgb: 124, 127, 179;
     --primary-hover: #6A6D9E;
@@ -20,31 +20,38 @@
     --primary-gradient: linear-gradient(135deg, #F8F9FB 0%, #F3F4F6 50%, #FAFAFB 100%);
     --secondary-gradient: linear-gradient(135deg, #F3F4F6 0%, #FAFAFB 100%);
 
+    /* ── 文字色 ── */
     --text-dark: #1F2937;
     --text-light: #4B5563;
     --text-muted: #9CA3AF;
 
+    /* ── 背景色 ── */
     --bg-light: #FFFFFF;
     --bg-white: #FFFFFF;
     --bg-color: #FFFFFF;
     --card-bg: #FFFFFF;
     --border-color: #E5E7EB;
 
+    /* ── 阴影 ── */
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
     --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
 
     --border-radius: 16px;
 
+    /* ── 导航栏 & 浮动层 ── */
     --navbar-bg: rgba(255, 255, 255, 0.95);
     --navbar-bg-solid: #FFFFFF;
     --overlay-bg: rgba(0, 0, 0, 0.5);
 
+    /* ── 输入框 ── */
     --input-bg: #FFFFFF;
     --input-border: #E5E7EB;
 
+    /* ── 渐变上的文字 ── */
     --text-on-gradient: #ffffff;
 
+    /* ── 功能色 ── */
     --danger-color: #EF4444;
     --danger-hover: #DC2626;
     --accent-red: #EF4444;
@@ -52,10 +59,22 @@
     --accent-gold: #fbbf24;
     --accent-teal: #14B8A6;
 
+    /* ── 额外背景 & 边框 ── */
     --bg-subtle: #F9FAFB;
     --bg-cream: #F9FAFB;
     --bg-cream-dark: #F3F4F6;
     --bg-upload-left: #F3F4F6;
-    --border-light: #E5E7EB;
-    --border-light2: #D1D5DB;
+
+    /* 暗色模式 */
+    --dark-primary: #A5B4FC;
+    --dark-primary-hover: #C7D2FE;
+    --dark-bg: #111827;
+    --dark-surface: #1F2937;
+    --dark-card: #1F2937;
+    --dark-border: #374151;
+    --dark-text: #F9FAFB;
+    --dark-text-secondary: #D1D5DB;
+    --dark-text-muted: #9CA3AF;
+    --dark-input-bg: #374151;
+    --dark-navbar: rgba(17, 24, 39, 0.95);
 }
