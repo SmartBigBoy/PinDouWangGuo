@@ -1617,8 +1617,7 @@ class PixelArtGenerator {
         }
 
         const csvContent = rows.map(row => row.map(cell => {
-            if (typeof cell === 'string' && (cell.includes(',') || cell.includes('"') || cell.includes('
-'))) {
+            if (typeof cell === 'string' && (cell.includes(',') || cell.includes('"') || cell.includes('\n'))) {
                 return `"${cell.replace(/"/g, '""')}"`;
             }
             return cell;
