@@ -1617,14 +1617,15 @@ class PixelArtGenerator {
         }
 
         const csvContent = rows.map(row => row.map(cell => {
-            if (typeof cell === 'string' && (cell.includes(',') || cell.includes('"') || cell.includes('\n'))) {
+            if (typeof cell === 'string' && (cell.includes(',') || cell.includes('"') || cell.includes('
+'))) {
                 return `"${cell.replace(/"/g, '""')}"`;
             }
             return cell;
         }).join(',')).join('
 ');
 
-        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8' });
+        const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = `materials-list-${Date.now()}.csv`;
@@ -1746,7 +1747,6 @@ class PixelArtGenerator {
 
         if (this.originalImageContainer) {
             this.originalImageContainer.classList.remove('has-image');
-            this.originalImageContainer.onclick = null;
             this.originalImageContainer.innerHTML = `
                 <input type="file" id="imageInput" accept="image/*" style="display: none;">
                 <label for="imageInput" class="upload-prompt">
