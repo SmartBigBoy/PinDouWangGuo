@@ -271,7 +271,7 @@ class PixelArtGenerator {
         this.originalImageContainer.classList.add('has-image');
         // 保留隐藏的 file input，确保更换图片时可正常触发文件选择
         this.originalImageContainer.innerHTML = '<img src="' + src + '" alt="原图">' +
-            '<input type="file" id="imageInput" accept="image/*" style="position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 3;">' +
+            '<input type="file" id="imageInput" accept="image/*" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; font-size: 0; cursor: pointer; z-index: 3;">' +
             '<button class="image-replace-btn" id="replaceImageBtn" title="更换图片" aria-label="更换图片">📷 更换图片</button>';
         // 重新获取 imageInput 引用并绑定 change 事件
         this.imageInput = document.getElementById('imageInput');
@@ -1746,7 +1746,7 @@ class PixelArtGenerator {
         if (this.originalImageContainer) {
             this.originalImageContainer.classList.remove('has-image');
             this.originalImageContainer.innerHTML = `
-                <input type="file" id="imageInput" accept="image/*" style="position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 3;">
+                <input type="file" id="imageInput" accept="image/*" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; font-size: 0; cursor: pointer; z-index: 3;">
                 <label for="imageInput" class="upload-prompt">
                     <span class="upload-icon" aria-hidden="true">📷</span>
                     <p>点击或拖拽上传图片</p>
