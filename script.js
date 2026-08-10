@@ -610,35 +610,42 @@ class PixelArtGenerator {
     // ============ 共享网格绘制方法 ============
 
     _drawGridBackground(ctx, w, h, pixelSize, coordSize, offsetX = 0, offsetY = 0) {
-        ctx.fillStyle = '#f0f0f5';
+        ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.fillStyle = '#e8e9f0';
-        // 上
-        ctx.fillRect(offsetX, offsetY, w * pixelSize + coordSize * 2, coordSize);
+        ctx.fillStyle = '#e8e7ee';
         // 左
         ctx.fillRect(offsetX, offsetY, coordSize, h * pixelSize + coordSize * 2);
+        // 右
+        ctx.fillRect(offsetX + coordSize + w * pixelSize, offsetY, coordSize, h * pixelSize + coordSize * 2);
+        // 上
+        ctx.fillRect(offsetX, offsetY, w * pixelSize + coordSize * 2, coordSize);
+        // 下
+        ctx.fillRect(offsetX, offsetY + coordSize + h * pixelSize, w * pixelSize + coordSize * 2, coordSize);
     }
 
     _drawGridCoords(ctx, w, h, pixelSize, coordSize, fontSize = 14, offsetX = 0, offsetY = 0) {
+        // 字号：自适应，不超过边框的 65%
+        const maxByBorder = Math.floor(coordSize * 0.6);
+        const dynamicSize = Math.max(10, Math.min(maxByBorder, Math.floor(pixelSize * 0.6)));
+        // 步长：小网格（<600格）每格显示，中网格每5，大网格每10
         const total = w * h;
         const step = total < 600 ? 1 : (total < 3000 ? 5 : 10);
-        const dynamicSize = Math.max(8, Math.min(11, Math.floor(pixelSize / 3)));
 
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'center';
-        ctx.font = 'bold ' + dynamicSize + 'px Arial, sans-serif';
+        ctx.font = '600 ' + dynamicSize + 'px -apple-system, "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
         for (let x = step - 1; x < w; x += step) {
             const tx = offsetX + coordSize + x * pixelSize + pixelSize / 2;
             const ty = offsetY + coordSize / 2;
-            ctx.fillStyle = '#555';
+            ctx.fillStyle = '#333333';
             ctx.fillText(x + 1, tx, ty);
         }
         ctx.textAlign = 'right';
         for (let y = step - 1; y < h; y += step) {
             const tx = offsetX + coordSize - 5;
             const ty = offsetY + coordSize + y * pixelSize + pixelSize / 2;
-            ctx.font = 'bold ' + dynamicSize + 'px Arial, sans-serif';
-            ctx.fillStyle = '#555';
+            ctx.font = '600 ' + dynamicSize + 'px -apple-system, "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
+            ctx.fillStyle = '#333333';
             ctx.fillText(y + 1, tx, ty);
         }
     }
@@ -689,7 +696,7 @@ class PixelArtGenerator {
         ctx.stroke();
     }
 
-    _drawGridBase(ctx, w, h, pixelSize, coordSize, offsetX = 0, offsetY = 0, fontSize = 11) {
+    _drawGridBase(ctx, w, h, pixelSize, coordSize, offsetX = 0, offsetY = 0, fontSize = 14) {
         this._drawGridBackground(ctx, w, h, pixelSize, coordSize, offsetX, offsetY);
         this._drawGridCoords(ctx, w, h, pixelSize, coordSize, fontSize, offsetX, offsetY);
         this._drawGridLines(ctx, w, h, pixelSize, coordSize, offsetX, offsetY);
