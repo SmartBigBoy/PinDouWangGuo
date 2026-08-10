@@ -909,13 +909,31 @@ class PixelArtGenerator {
         const tooltip = document.getElementById('coordTooltip');
         destCanvas.getContext('2d').drawImage(canvas, 0, 0);
 
-        // 全屏 —— 标题栏按钮
-        const fullscreenBtn = document.getElementById('fullscreenTitleBtn');
         const wrapper = destCanvas.parentElement;
 
-        // 全屏工具函数（提出 if 块，供底部导航栏共用）
+        // 自适应缩放：让画布填满预览框且保持宽高比
+        function fitCanvas() {
+            const cw = destCanvas.width, ch = destCanvas.height;
+            const ww = wrapper.clientWidth, wh = wrapper.clientHeight;
+            if (!ww || !wh) return;
+            const scale = Math.min(ww / cw, wh / ch);
+            destCanvas.style.width  = (cw * scale) + 'px';
+            destCanvas.style.height = (ch * scale) + 'px';
+        }
+        fitCanvas();
+
+        // 全屏 —— 标题栏按钮
+        const fullscreenBtn = document.getElementById('fullscreenTitleBtn');
+
+        // 全屏工具函数
         const isFS = () =>
             document.fullscreenElement || document.webkitFullscreenElement;
+
+        // 窗口 resize 时重新适配（非全屏状态），先清理旧监听
+        if (this._resizeHandler) window.removeEventListener('resize', this._resizeHandler);
+        this._resizeHandler = () => { if (!isFS()) fitCanvas(); };
+        window.addEventListener('resize', this._resizeHandler);
+
         const exitFS = () => {
             const fn = document.exitFullscreen || document.webkitExitFullscreen;
             if (fn) fn.call(document);
@@ -941,6 +959,8 @@ class PixelArtGenerator {
 
                 destCanvas.width = gW * ps + cs * 2;
                 destCanvas.height = gH * ps + cs * 2;
+                destCanvas.style.width = destCanvas.width + 'px';
+                destCanvas.style.height = destCanvas.height + 'px';
                 const ctx = destCanvas.getContext('2d');
                 ctx.imageSmoothingEnabled = false;
                 self._drawGridBase(ctx, gW, gH, ps, cs);
@@ -994,6 +1014,7 @@ class PixelArtGenerator {
                 }
                 renderFullRes();
                 updateZoomBadge();
+                if (!inFs) setTimeout(fitCanvas, 50);
             };
             // 清除旧监听器，避免多次 showPixelArt 造成泄漏
             if (this._fsHandler) {
@@ -1073,6 +1094,8 @@ class PixelArtGenerator {
             if (destCanvas.width !== width * ps + cs * 2 || destCanvas.height !== height * ps + cs * 2) {
                 destCanvas.width = width * ps + cs * 2;
                 destCanvas.height = height * ps + cs * 2;
+                destCanvas.style.width = destCanvas.width + 'px';
+                destCanvas.style.height = destCanvas.height + 'px';
             }
             const ctx = destCanvas.getContext('2d');
             ctx.clearRect(0, 0, destCanvas.width, destCanvas.height);
