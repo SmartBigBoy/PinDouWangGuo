@@ -115,11 +115,17 @@ class PixelArtGenerator {
     setupEventListeners() {
         this.imageInput.addEventListener('change', (e) => this.handleImageUpload(e));
 
-        // 上传区域：在原图框上拖拽
+        // 上传区域：在原图框上拖拽 + 点击兜底
         const uploadTarget = this.originalImageContainer;
         uploadTarget.addEventListener('dragover', (e) => this.handleDragOver(e));
         uploadTarget.addEventListener('dragleave', (e) => this.handleDragLeave(e));
         uploadTarget.addEventListener('drop', (e) => this.handleDrop(e));
+        uploadTarget.addEventListener('click', (e) => {
+            // 仅在空态（未上传图片）且点击的不是 label 内部时，手动触发文件选择
+            if (!this.originalImage && e.target === uploadTarget) {
+                this.imageInput.click();
+            }
+        });
         uploadTarget.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
@@ -263,8 +269,15 @@ class PixelArtGenerator {
 
     showOriginalImage(src) {
         this.originalImageContainer.classList.add('has-image');
+        // 保留隐藏的 file input，确保更换图片时可正常触发文件选择
         this.originalImageContainer.innerHTML = '<img src="' + src + '" alt="原图">' +
+            '<input type="file" id="imageInput" accept="image/*" style="display: none;">' +
             '<button class="image-replace-btn" id="replaceImageBtn" title="更换图片" aria-label="更换图片">📷 更换图片</button>';
+        // 重新获取 imageInput 引用并绑定 change 事件
+        this.imageInput = document.getElementById('imageInput');
+        if (this.imageInput) {
+            this.imageInput.addEventListener('change', (e) => this.handleImageUpload(e));
+        }
         // 重新绑定更换按钮
         const replaceBtn = document.getElementById('replaceImageBtn');
         if (replaceBtn) {
@@ -273,6 +286,12 @@ class PixelArtGenerator {
                 this.imageInput.click();
             });
         }
+        // 点击容器（非按钮区域）也可触发更换图片
+        this.originalImageContainer.onclick = (e) => {
+            if (e.target === this.originalImageContainer || e.target.tagName === 'IMG') {
+                this.imageInput.click();
+            }
+        };
     }
 
     getGridSize() {
@@ -1598,8 +1617,7 @@ class PixelArtGenerator {
         }
 
         const csvContent = rows.map(row => row.map(cell => {
-            if (typeof cell === 'string' && (cell.includes(',') || cell.includes('"') || cell.includes('
-'))) {
+            if (typeof cell === 'string' && (cell.includes(',') || cell.includes('"') || cell.includes('\n'))) {
                 return `"${cell.replace(/"/g, '""')}"`;
             }
             return cell;
@@ -1728,6 +1746,7 @@ class PixelArtGenerator {
 
         if (this.originalImageContainer) {
             this.originalImageContainer.classList.remove('has-image');
+            this.originalImageContainer.onclick = null;
             this.originalImageContainer.innerHTML = `
                 <input type="file" id="imageInput" accept="image/*" style="display: none;">
                 <label for="imageInput" class="upload-prompt">
