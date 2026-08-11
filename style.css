@@ -706,6 +706,7 @@ body {
 .image-container {
     position: relative;
     width: 100%;
+    min-height: 260px;
     aspect-ratio: 1;
     border: 2px solid var(--border-color);
     border-radius: 12px;
@@ -717,10 +718,9 @@ body {
     transition: all 0.3s ease;
 }
 
-/* 旧版 Safari (iOS 14-) 不支持 aspect-ratio，用 min-height 兜底 */
-@supports not (aspect-ratio: 1) {
+@supports (aspect-ratio: 1) {
     .image-container {
-        min-height: 260px;
+        min-height: 0;
     }
 }
 
