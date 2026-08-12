@@ -14,6 +14,7 @@ function flattenPalette(paletteName) {
 class PixelArtGenerator {
     constructor() {
         this.originalImage = null;
+        this.currentImageDataURL = null;  // 用于裁剪弹窗恢复
         this.pixelCanvas = null;
         this.currentColors = [];
         this.beadCountMap = new Map();
@@ -107,7 +108,6 @@ class PixelArtGenerator {
         this.generateBtn = document.getElementById('generateBtn');
         this.clearBtn = document.getElementById('clearBtn');
         this.colorPalette = document.getElementById('colorPalette');
-        this.showGridCheckbox = document.getElementById('showGrid');
         this.statsSection = document.getElementById('statsSection');
         this.totalBeadsEl = document.getElementById('totalBeads');
         this.colorCountUsedEl = document.getElementById('colorCountUsed');
@@ -118,6 +118,23 @@ class PixelArtGenerator {
         this.beadSizeSelect = document.getElementById('beadSize');
         this.physicalSizeEl = document.getElementById('physicalSize');
         this.physicalDimensionsEl = document.getElementById('physicalDimensions');
+
+        // 裁剪弹窗元素
+        this.cropModal = document.getElementById('cropModal');
+        this.cropCloseBtn = document.getElementById('cropClose');
+        this.cropStage = document.getElementById('cropStage');
+        this.cropImage = document.getElementById('cropImage');
+        this.cropMaskTop = document.getElementById('cropMaskTop');
+        this.cropMaskBottom = document.getElementById('cropMaskBottom');
+        this.cropMaskLeft = document.getElementById('cropMaskLeft');
+        this.cropMaskRight = document.getElementById('cropMaskRight');
+        this.cropSelectEl = document.getElementById('cropSelect');
+        this.cropInfo = document.getElementById('cropInfo');
+        this.cropResetBtn = document.getElementById('cropReset');
+        this.cropConfirmBtn = document.getElementById('cropConfirm');
+        this._cropSel = null;
+        this._cropDragging = false;
+        this._cropDragStart = null;
     }
 
     setupEventListeners() {
@@ -199,10 +216,9 @@ class PixelArtGenerator {
         // 色号显示切换
         const showLabelsBtn = document.getElementById('showLabelsBtn');
         if (showLabelsBtn) {
-            showLabelsBtn.style.opacity = '0.6';
             showLabelsBtn.addEventListener('click', () => {
                 this._showLabels = !this._showLabels;
-                showLabelsBtn.style.opacity = this._showLabels ? '1' : '0.6';
+                showLabelsBtn.classList.toggle('active', this._showLabels);
                 if (this.pixelData.length) {
                     const p = this._currentRenderParams;
                     if (p) this._rerenderFromData(p.pixelSize, p.gridW, p.gridH, p.coordSize);
@@ -215,12 +231,6 @@ class PixelArtGenerator {
             this.generatePixelArt();
         });
         this.clearBtn.addEventListener('click', () => this.clearAll());
-
-        if (this.showGridCheckbox) {
-            this.showGridCheckbox.addEventListener('change', () => {
-                if (this.originalImage) this.scheduleAutoGenerate();
-            });
-        }
 
         if (this.exportCsvBtn) {
             this.exportCsvBtn.addEventListener('click', () => this.exportCsv());
@@ -242,6 +252,20 @@ class PixelArtGenerator {
                 this.colorCountSlider.value = maxColors;
                 this.colorCountValue.textContent = maxColors;
             }
+        }
+
+        // 裁剪弹窗事件绑定
+        if (this.cropModal) {
+            this.cropCloseBtn.addEventListener('click', () => this._closeCrop());
+            this.cropModal.addEventListener('click', (e) => { if (e.target === this.cropModal) this._closeCrop(); });
+            this.cropResetBtn.addEventListener('click', () => this._initCropSelect());
+            this.cropConfirmBtn.addEventListener('click', () => this._confirmCrop());
+            this.cropStage.addEventListener('pointerdown', (e) => this._cropPointerDown(e));
+            window.addEventListener('pointermove', (e) => this._cropPointerMove(e));
+            window.addEventListener('pointerup', () => this._cropPointerUp());
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && this.cropModal.classList.contains('show')) this._closeCrop();
+            });
         }
     }
 
@@ -282,6 +306,7 @@ class PixelArtGenerator {
                     showToast('图片超过 5MB，建议压缩后上传', 'warning');
                 }
                 this.originalImage = img;
+                this.currentImageDataURL = e.target.result;
                 this.showOriginalImage(e.target.result);
                 this.scheduleAutoGenerate();
             };
@@ -293,21 +318,33 @@ class PixelArtGenerator {
 
     showOriginalImage(src) {
         this.originalImageContainer.classList.add('has-image');
-        // 保留隐藏的 file input，确保更换图片时可正常触发文件选择
-        this.originalImageContainer.innerHTML = '<img src="' + src + '" alt="原图">' +
-            '<input type="file" id="imageInput" accept="image/*" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.001; font-size: 0; cursor: pointer; z-index: 3;">' +
-            '<button class="image-replace-btn" id="replaceImageBtn" title="更换图片" aria-label="更换图片">📷 更换图片</button>';
-        // 重新获取 imageInput 引用并绑定 change 事件
+        // 保持容器高度原样（aspect-ratio:1 正方形），仅改为纵向排列让内容居中
+        this.originalImageContainer.style.flexDirection = 'column';
+        // 显示缩略图 + 裁剪/重新选择按钮（内联样式覆盖 .image-replace-btn 默认的 display:none）
+        this.originalImageContainer.innerHTML = `
+            <img src="${src}" alt="原图" style="display:block;max-width:100%;max-height:120px;margin:0 auto;border-radius:6px;">
+            <input type="file" id="imageInput" accept="image/*" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.001; font-size: 0; cursor: pointer; z-index: 3;">
+            <div style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
+                <button id="cropOriginBtn" title="裁剪图片" style="display:inline-flex;align-items:center;gap:4px;position:static;padding:6px 12px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer;border:none;background:#f0f0f5;color:#333;">✂️ 裁剪</button>
+                <button id="replaceImageBtn" title="更换图片" style="display:inline-flex;align-items:center;gap:4px;position:static;padding:6px 12px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer;border:none;background:rgba(0,0,0,0.72);color:#fff;">📷 重新选择</button>
+            </div>`;
+        // 重新获取引用并绑定事件
         this.imageInput = document.getElementById('imageInput');
         if (this.imageInput) {
             this.imageInput.addEventListener('change', (e) => this.handleImageUpload(e));
         }
-        // 重新绑定更换按钮
         const replaceBtn = document.getElementById('replaceImageBtn');
         if (replaceBtn) {
             replaceBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.imageInput.click();
+            });
+        }
+        const cropBtn = document.getElementById('cropOriginBtn');
+        if (cropBtn) {
+            cropBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this._openCrop();
             });
         }
         // 点击容器（非按钮区域）也可触发更换图片
@@ -322,8 +359,8 @@ class PixelArtGenerator {
         const selected = this.gridSizeSelect.value;
         if (selected === 'custom') {
             return {
-                width: Math.max(5, Math.min(200, parseInt(this.gridWidthInput.value) || 29)),
-                height: Math.max(5, Math.min(200, parseInt(this.gridHeightInput.value) || 29))
+                width: Math.max(5, Math.min(200, parseInt(this.gridWidthInput.value) || 58)),
+                height: Math.max(5, Math.min(200, parseInt(this.gridHeightInput.value) || 58))
             };
         }
         const [w, h] = selected.split('x').map(Number);
@@ -367,7 +404,6 @@ class PixelArtGenerator {
                 const pixelSize = parseInt(this.pixelSizeSlider.value);
                 const colorCount = parseInt(this.colorCountSlider.value);
                 const gridSize = this.getGridSize();
-                const showGrid = this.showGridCheckbox ? this.showGridCheckbox.checked : false;
                 const coordSize = 30;
 
                 const canvas = document.createElement('canvas');
@@ -384,7 +420,7 @@ class PixelArtGenerator {
                 const colors = this.extractColors(pixels, colorCount);
 
                 this.beadCountMap.clear();
-                this.drawPixelArt(ctx, pixels, colors, gridSize.width, gridSize.height, pixelSize, showGrid, this.highlightColor);
+                this.drawPixelArt(ctx, pixels, colors, gridSize.width, gridSize.height, pixelSize, this.highlightColor);
 
                 this.currentColors = colors;
                 this._currentRenderParams = { pixelSize, gridW: gridSize.width, gridH: gridSize.height, coordSize };
@@ -680,8 +716,8 @@ class PixelArtGenerator {
             ctx.lineTo(offsetX + coordSize + w * pixelSize, offsetY + coordSize + y * pixelSize);
             ctx.stroke();
         }
-        ctx.strokeStyle = '#333333';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#c5c5cd';
+        ctx.lineWidth = 1;
         for (let x = 5; x < w; x += 5) {
             ctx.beginPath();
             ctx.moveTo(offsetX + coordSize + x * pixelSize, offsetY + coordSize);
@@ -696,26 +732,10 @@ class PixelArtGenerator {
         }
     }
 
-    _drawCenterCross(ctx, w, h, pixelSize, coordSize, offsetX = 0, offsetY = 0) {
-        ctx.strokeStyle = '#e53935';
-        ctx.lineWidth = 1.5;
-        const midX = Math.floor(w / 2);
-        const midY = Math.floor(h / 2);
-        ctx.beginPath();
-        ctx.moveTo(offsetX + coordSize + midX * pixelSize, offsetY + coordSize);
-        ctx.lineTo(offsetX + coordSize + midX * pixelSize, offsetY + coordSize + h * pixelSize);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(offsetX + coordSize, offsetY + coordSize + midY * pixelSize);
-        ctx.lineTo(offsetX + coordSize + w * pixelSize, offsetY + coordSize + midY * pixelSize);
-        ctx.stroke();
-    }
-
     _drawGridBase(ctx, w, h, pixelSize, coordSize, offsetX = 0, offsetY = 0, fontSize = 14) {
         this._drawGridBackground(ctx, w, h, pixelSize, coordSize, offsetX, offsetY);
         this._drawGridCoords(ctx, w, h, pixelSize, coordSize, fontSize, offsetX, offsetY);
         this._drawGridLines(ctx, w, h, pixelSize, coordSize, offsetX, offsetY);
-        this._drawCenterCross(ctx, w, h, pixelSize, coordSize, offsetX, offsetY);
     }
 
     /** 在像素格四周画粗边框（需在像素块画完后调用） */
@@ -741,7 +761,7 @@ class PixelArtGenerator {
         ctx.fillRect(x + gw, y + gh, t, t);
     }
 
-    drawPixelArt(ctx, pixels, colors, width, height, pixelSize, showGrid, highlightColor = null) {
+    drawPixelArt(ctx, pixels, colors, width, height, pixelSize, highlightColor = null) {
         const coordSize = 30;
 
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -761,7 +781,6 @@ class PixelArtGenerator {
 
                 let closestColor = defaultColor;
                 let fillColor = '#f5f5f5';
-                let gridColor = '#e0e0e0';
                 let isEmpty = true;
 
                 if (a >= 128) {
@@ -773,10 +792,8 @@ class PixelArtGenerator {
 
                     if (highlightColor && closestColor.hex === highlightColor) {
                         fillColor = closestColor.hex;
-                        gridColor = closestColor.hex;
                     } else if (highlightColor) {
                         fillColor = closestColor.hex;
-                        gridColor = '#e0e0e0';
                         ctx.globalAlpha = 0.25;
                     } else {
                         fillColor = closestColor.hex;
@@ -790,22 +807,10 @@ class PixelArtGenerator {
                 ctx.fillRect(coordSize + x * pixelSize, coordSize + y * pixelSize, pixelSize - 1, pixelSize - 1);
                 ctx.globalAlpha = 1.0;
 
-                if (showGrid) {
-                    ctx.strokeStyle = gridColor;
-                    ctx.lineWidth = highlightColor ? 1.5 : 0.5;
-                    if (highlightColor && !isEmpty && closestColor.hex === highlightColor) {
-                        ctx.globalAlpha = 1.0;
-                    } else if (highlightColor && !isEmpty) {
-                        ctx.globalAlpha = 0.2;
-                    }
-                    ctx.strokeRect(coordSize + x * pixelSize, coordSize + y * pixelSize, pixelSize - 1, pixelSize - 1);
-                    ctx.globalAlpha = 1.0;
-                }
-
                 // 非空像素格内绘制颜色编号
                 if (this._showLabels && !isEmpty && pixelSize >= 8 && closestColor.name) {
                     const fontSize = Math.max(6, Math.round(pixelSize * 0.35));
-                    ctx.font = `bold ${fontSize}px -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif`;
+                    ctx.font = `bold ${fontSize}px Arial, sans-serif`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     // 根据背景色亮度选黑/白文字
@@ -813,12 +818,15 @@ class PixelArtGenerator {
                     const hg = parseInt(closestColor.hex.slice(3, 5), 16);
                     const hb = parseInt(closestColor.hex.slice(5, 7), 16);
                     const lum = (0.299 * hr + 0.587 * hg + 0.114 * hb) / 255;
-                    ctx.fillStyle = lum > 0.55 ? '#000000' : '#ffffff';
+                    ctx.fillStyle = lum > 0.5 ? '#000000' : '#ffffff';
+                    ctx.shadowColor = lum > 0.5 ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.7)';
+                    ctx.shadowBlur = 3;
                     ctx.fillText(
                         closestColor.name,
                         coordSize + x * pixelSize + pixelSize / 2,
                         coordSize + y * pixelSize + pixelSize / 2
                     );
+                    ctx.shadowBlur = 0;
                 }
 
                 row.push({ color: closestColor, x, y, isEmpty });
@@ -892,7 +900,7 @@ class PixelArtGenerator {
                 <canvas id="pixelatedCanvas" width="${canvas.width}" height="${canvas.height}" style="cursor: crosshair; max-width: 100%; max-height: 100%; image-rendering: pixelated; image-rendering: crisp-edges;"></canvas>
                 <div id="coordTooltip" style="position: absolute; background: rgba(26, 26, 46, 0.95); color: #f5f5f5; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; pointer-events: none; display: none; z-index: 100; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.2);"></div>
                 <button class="fs-exit" id="fsExit" title="退出全屏 (Esc)">✕</button>
-                <div class="fs-zoom-badge" id="fsZoomBadge" style="position: absolute; top: 12px; right: 52px; background: rgba(26,26,46,0.85); color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; pointer-events: none; z-index: 50;">100%</div>
+                <div class="fs-zoom-badge" id="fsZoomBadge" style="display: none; position: absolute; bottom: 72px; right: 12px; background: rgba(26,26,46,0.85); color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; pointer-events: none; z-index: 50;">100%</div>
                 <div class="fs-color-bar" id="fsColorBar">
                     <button class="fs-btn" id="fsPrev">◀</button>
                     <div class="fs-color-info">
@@ -910,6 +918,29 @@ class PixelArtGenerator {
         destCanvas.getContext('2d').drawImage(canvas, 0, 0);
 
         const wrapper = destCanvas.parentElement;
+
+        // 全屏平移状态（canvas 用 transform 定位，拖动画布查看超出视口的区域）
+        let panning = false, panStartX = 0, panStartY = 0;
+        let touchPanning = false;   // 触摸拖动平移标志
+        let fsTx = 0, fsTy = 0;     // canvas 相对 wrapper 的位移（全屏）
+
+        // 应用 canvas 位移（全屏时生效，非全屏清空）
+        function updateTransform() {
+            if (isFS()) {
+                destCanvas.style.transform = `translate(${fsTx}px, ${fsTy}px)`;
+            } else {
+                destCanvas.style.transform = '';
+            }
+        }
+
+        // 全屏时让画布在可用区域内居中
+        function centerCanvas() {
+            const availW = wrapper.clientWidth;
+            const availH = wrapper.clientHeight - 56; // 底部导航
+            fsTx = Math.max(0, (availW - destCanvas.width) / 2);
+            fsTy = Math.max(0, (availH - destCanvas.height) / 2);
+            updateTransform();
+        }
 
         // 自适应缩放：让画布填满预览框且保持宽高比
         function fitCanvas() {
@@ -948,7 +979,6 @@ class PixelArtGenerator {
             };
             const toggle = () => { if (isFS()) exitFS(); else requestFS(); };
             fullscreenBtn.onclick = toggle;
-            destCanvas.ondblclick = toggle;
 
             // 全屏渲染（使用当前 self._px / self._cx）
             function renderFullRes() {
@@ -959,6 +989,7 @@ class PixelArtGenerator {
 
                 destCanvas.width = gW * ps + cs * 2;
                 destCanvas.height = gH * ps + cs * 2;
+                // 允许放大超过视口，由 wrapper 滚动 + 锚点缩放控制查看区域
                 destCanvas.style.width = destCanvas.width + 'px';
                 destCanvas.style.height = destCanvas.height + 'px';
                 const ctx = destCanvas.getContext('2d');
@@ -973,15 +1004,18 @@ class PixelArtGenerator {
                         // 颜色编号
                         if (self._showLabels && ps >= 8 && p.color.name) {
                             const fz = Math.max(6, Math.round(ps * 0.35));
-                            ctx.font = `bold ${fz}px -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif`;
+                            ctx.font = `bold ${fz}px Arial, sans-serif`;
                             ctx.textAlign = 'center';
                             ctx.textBaseline = 'middle';
                             const hr2 = parseInt(p.color.hex.slice(1, 3), 16);
                             const hg2 = parseInt(p.color.hex.slice(3, 5), 16);
                             const hb2 = parseInt(p.color.hex.slice(5, 7), 16);
                             const lum2 = (0.299 * hr2 + 0.587 * hg2 + 0.114 * hb2) / 255;
-                            ctx.fillStyle = lum2 > 0.55 ? '#000000' : '#ffffff';
+                            ctx.fillStyle = lum2 > 0.5 ? '#000000' : '#ffffff';
+                            ctx.shadowColor = lum2 > 0.5 ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.7)';
+                            ctx.shadowBlur = 3;
                             ctx.fillText(p.color.name, cs + x * ps + ps / 2, cs + y * ps + ps / 2);
+                            ctx.shadowBlur = 0;
                         }
                     }
                 }
@@ -992,6 +1026,8 @@ class PixelArtGenerator {
                 const inFs = isFS();
                 fullscreenBtn.innerHTML = inFs ? '✕ 退出' : '⛶ 全屏';
                 fullscreenBtn.title = inFs ? '退出全屏' : '全屏查看';
+                const zoomBadge = document.getElementById('fsZoomBadge');
+                if (zoomBadge) zoomBadge.style.display = inFs ? 'block' : 'none';
                 if (inFs) {
                     // 进入全屏：保存原尺寸，计算最佳适配尺寸
                     self._origPx = self._px;
@@ -1001,20 +1037,27 @@ class PixelArtGenerator {
                     const estCS = 48;
                     const maxW = window.innerWidth - estCS - 16;
                     const maxH = window.innerHeight - estCS - 68;
-                    const newPS = Math.max(10, Math.min(Math.floor(maxW / width), Math.floor(maxH / height)));
                     const newCS = 30;
+                    const newPS = Math.max(10, Math.min(Math.floor((maxW - newCS * 2) / width), Math.floor((maxH - newCS * 2) / height)));
                     self._px = newPS;
                     self._cx = newCS;
                     self._zoomPx = newPS;
                     self._zoomCx = newCS;
                 } else {
-                    // 退出全屏：恢复原尺寸
+                    // 退出全屏：恢复原尺寸并复位位移
                     self._px = self._origPx || self._px;
                     self._cx = self._origCx || self._cx;
+                    fsTx = 0;
+                    fsTy = 0;
+                    updateTransform();
                 }
                 renderFullRes();
                 updateZoomBadge();
-                if (!inFs) setTimeout(fitCanvas, 50);
+                if (inFs) {
+                    centerCanvas();
+                } else {
+                    setTimeout(fitCanvas, 50);
+                }
             };
             // 清除旧监听器，避免多次 showPixelArt 造成泄漏
             if (this._fsHandler) {
@@ -1034,20 +1077,66 @@ class PixelArtGenerator {
                 }
             }
 
-            // 全屏模式：鼠标滚轮缩放
+            // 全屏模式：鼠标滚轮缩放（以鼠标位置为锚点，悬停的局部区域保持不动）
             wrapper.addEventListener('wheel', (e) => {
                 if (!isFS()) return;
                 e.preventDefault();
+                const rect = destCanvas.getBoundingClientRect();
+                // 锚点内容坐标（相对 canvas 左上角，rect 已含 transform 位移）
+                const contentX = e.clientX - rect.left;
+                const contentY = e.clientY - rect.top;
                 const zoomIn = e.deltaY < 0;
                 const step = self._px >= 40 ? 5 : (self._px >= 20 ? 3 : 2);
                 const newPS = Math.max(5, Math.min(100, self._px + (zoomIn ? step : -step)));
                 if (newPS !== self._px) {
+                    const oldPS = self._px;
+                    const cs = self._cx;
                     self._px = newPS;
                     self._cx = 30;
                     renderFullRes();
                     updateZoomBadge();
+                    // 锚点缩放：用格子内容比例（newPS/oldPS），先扣除坐标轴偏移 cs，
+                    // 保证鼠标悬停的内容格子缩放后仍位于鼠标下方
+                    const ratio = newPS / oldPS;
+                    fsTx = fsTx + (contentX - cs) * (1 - ratio);
+                    fsTy = fsTy + (contentY - cs) * (1 - ratio);
+                    updateTransform();
                 }
             }, { passive: false });
+
+            // 全屏模式：鼠标拖动平移（画布超过视口后按住拖动查看局部）
+            let panStartTx = 0, panStartTy = 0;
+            const onPanDown = (e) => {
+                if (!isFS() || e.button !== 0) return;
+                if (e.target !== destCanvas) return;
+                panning = true;
+                panStartX = e.clientX;
+                panStartY = e.clientY;
+                panStartTx = fsTx;
+                panStartTy = fsTy;
+                wrapper.style.cursor = 'grabbing';
+                tooltip.style.display = 'none';
+            };
+            const onPanMove = (e) => {
+                if (!isFS() || !panning) return;
+                fsTx = panStartTx + (e.clientX - panStartX);
+                fsTy = panStartTy + (e.clientY - panStartY);
+                updateTransform();
+                tooltip.style.display = 'none';
+            };
+            const onPanUp = () => {
+                if (!panning) return;
+                panning = false;
+                wrapper.style.cursor = '';
+            };
+            wrapper.addEventListener('pointerdown', onPanDown);
+            // 清理旧监听，避免多次 showPixelArt 造成 window 级监听泄漏
+            if (this._panMoveHandler) window.removeEventListener('pointermove', this._panMoveHandler);
+            if (this._panUpHandler) window.removeEventListener('pointerup', this._panUpHandler);
+            this._panMoveHandler = onPanMove;
+            this._panUpHandler = onPanUp;
+            window.addEventListener('pointermove', onPanMove);
+            window.addEventListener('pointerup', onPanUp);
 
             // 全屏模式：触摸双指缩放
             let touchDist0 = 0, touchPx0 = 0;
@@ -1061,16 +1150,29 @@ class PixelArtGenerator {
             wrapper.addEventListener('touchmove', (e) => {
                 if (!isFS() || e.touches.length !== 2 || touchDist0 <= 0) return;
                 e.preventDefault();
-                const dx = e.touches[0].clientX - e.touches[1].clientX;
-                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const t0 = e.touches[0], t1 = e.touches[1];
+                const midX = (t0.clientX + t1.clientX) / 2;
+                const midY = (t0.clientY + t1.clientY) / 2;
+                const rect = destCanvas.getBoundingClientRect();
+                const contentX = midX - rect.left;
+                const contentY = midY - rect.top;
+                const dx = t0.clientX - t1.clientX;
+                const dy = t0.clientY - t1.clientY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
                 const scale = dist / touchDist0;
                 const newPS = Math.max(5, Math.min(100, Math.round(touchPx0 * scale)));
                 if (newPS !== self._px) {
+                    const oldPS = self._px;
+                    const cs = self._cx;
                     self._px = newPS;
                     self._cx = 30;
                     renderFullRes();
                     updateZoomBadge();
+                    // 两指中心为锚点：用格子内容比例保持局部不动
+                    const ratio = newPS / oldPS;
+                    fsTx = fsTx + (contentX - cs) * (1 - ratio);
+                    fsTy = fsTy + (contentY - cs) * (1 - ratio);
+                    updateTransform();
                 }
             }, { passive: false });
             wrapper.addEventListener('touchend', () => {
@@ -1128,15 +1230,18 @@ class PixelArtGenerator {
                     // 颜色编号（非空像素 + 非高亮淡化态时绘制）
                     if (self._showLabels && !isEmpty && self._px >= 8 && pixel.color.name && (!hexColor || isHL)) {
                         const fz3 = Math.max(6, Math.round(self._px * 0.35));
-                        ctx.font = `bold ${fz3}px -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif`;
+                        ctx.font = `bold ${fz3}px Arial, sans-serif`;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         const hr3 = parseInt(pixel.color.hex.slice(1, 3), 16);
                         const hg3 = parseInt(pixel.color.hex.slice(3, 5), 16);
                         const hb3 = parseInt(pixel.color.hex.slice(5, 7), 16);
                         const lum3 = (0.299 * hr3 + 0.587 * hg3 + 0.114 * hb3) / 255;
-                        ctx.fillStyle = lum3 > 0.55 ? '#000000' : '#ffffff';
+                        ctx.fillStyle = lum3 > 0.5 ? '#000000' : '#ffffff';
+                        ctx.shadowColor = lum3 > 0.5 ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.7)';
+                        ctx.shadowBlur = 3;
                         ctx.fillText(pixel.color.name, self._cx + x * self._px + self._px / 2, self._cx + y * self._px + self._px / 2);
+                        ctx.shadowBlur = 0;
                     }
                 }
             }
@@ -1284,6 +1389,7 @@ class PixelArtGenerator {
             }
         }
         destCanvas.addEventListener('mousemove', (e) => {
+            if (panning) return;
             const { gridX, gridY, offsetX, offsetY, rect } = getGridFromEvent(e.clientX, e.clientY);
             updateTooltip(gridX, gridY, offsetX, offsetY, rect, e.clientX, e.clientY);
         });
@@ -1300,23 +1406,40 @@ class PixelArtGenerator {
             const touch = e.touches[0];
             touchStartX = touch.clientX;
             touchStartY = touch.clientY;
+            touchPanning = false;
             const { gridX, gridY, offsetX, offsetY, rect } = getGridFromEvent(touch.clientX, touch.clientY);
             updateTooltip(gridX, gridY, offsetX, offsetY, rect, touch.clientX, touch.clientY);
         }, { passive: false });
         destCanvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
             const touch = e.touches[0];
+            // 全屏单指拖动超过阈值 → 平移查看局部（画布超过视口时）
+            if (isFS() && e.touches.length === 1) {
+                const dx = touch.clientX - touchStartX;
+                const dy = touch.clientY - touchStartY;
+                if (Math.hypot(dx, dy) > 15) {
+                    touchPanning = true;
+                    fsTx += dx;
+                    fsTy += dy;
+                    updateTransform();
+                    touchStartX = touch.clientX;
+                    touchStartY = touch.clientY;
+                    tooltip.style.display = 'none';
+                    return;
+                }
+            }
             const { gridX, gridY, offsetX, offsetY, rect } = getGridFromEvent(touch.clientX, touch.clientY);
             updateTooltip(gridX, gridY, offsetX, offsetY, rect, touch.clientX, touch.clientY);
         }, { passive: false });
         destCanvas.addEventListener('touchend', (e) => {
             e.preventDefault();
             tooltip.style.display = 'none';
-            if (Math.hypot(touchStartX - (e.changedTouches[0]?.clientX || 0),
+            if (!touchPanning && Math.hypot(touchStartX - (e.changedTouches[0]?.clientX || 0),
                           touchStartY - (e.changedTouches[0]?.clientY || 0)) < 15) {
                 const { gridX, gridY } = getGridFromEvent(touchStartX, touchStartY);
                 handleCellClick(gridX, gridY);
             }
+            touchPanning = false;
             lastHoveredCell = null;
         }, { passive: false });
     }
@@ -1443,6 +1566,54 @@ class PixelArtGenerator {
         }
     }
 
+    /**
+     * 绘制品牌引流卡片：白底 + 品牌粉边框，左侧渐变图标 + 右侧「拼豆王国 / 域名」
+     * 用于导出纯像素图与全信息图，方便引流
+     */
+    _drawBrandCard(ctx, x, y, w, h) {
+        const iconSize = Math.round(h * 0.52);
+        const iconX = x + Math.round(w * 0.07);
+        const iconY = y + Math.round((h - iconSize) / 2);
+        const textX = iconX + iconSize + Math.round(w * 0.055);
+        const nameSize = Math.max(20, Math.round(h * 0.28));
+        const urlSize = Math.max(13, Math.round(h * 0.18));
+
+        // 卡片背景 + 品牌粉描边
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        this.roundRect(ctx, x, y, w, h, Math.round(h * 0.13));
+        ctx.strokeStyle = '#F4A0B8';
+        ctx.lineWidth = Math.max(2, Math.round(h * 0.024));
+        ctx.stroke();
+
+        // 品牌图标：粉→紫渐变圆角方块 + 白色豆点
+        const grad = ctx.createLinearGradient(iconX, iconY, iconX + iconSize, iconY + iconSize);
+        grad.addColorStop(0, '#F4A0B8');
+        grad.addColorStop(1, '#8A6FE8');
+        ctx.fillStyle = grad;
+        this.roundRect(ctx, iconX, iconY, iconSize, iconSize, Math.round(iconSize * 0.22));
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(iconX + iconSize / 2, iconY + iconSize / 2, Math.round(iconSize * 0.2), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+        ctx.lineWidth = Math.max(2, Math.round(iconSize * 0.045));
+        ctx.beginPath();
+        ctx.arc(iconX + iconSize / 2, iconY + iconSize / 2, Math.round(iconSize * 0.36), 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 品牌名 + 域名
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#D4528A';
+        ctx.font = `bold ${nameSize}px "Microsoft YaHei", "PingFang SC", Arial, sans-serif`;
+        ctx.fillText('拼豆王国', textX, y + h * 0.36);
+        ctx.fillStyle = '#777777';
+        ctx.font = `${urlSize}px "Courier New", Consolas, monospace`;
+        ctx.fillText('https://pindou.skin', textX, y + h * 0.70);
+        ctx.restore();
+    }
+
     downloadPureImage() {
         if (!this.pixelData.length) return;
 
@@ -1521,6 +1692,19 @@ class PixelArtGenerator {
             }
         }
 
+        // 引流卡片：图纸右侧留白垂直居中（与全信息图同款 430 宽卡片），空间不足则底部居中
+        const cardW = 430, cardH = 132;
+        const rightGap = targetWidth - (offsetX + actualWidth);
+        let brandX, brandY;
+        if (rightGap >= cardW + 40) {
+            brandX = offsetX + actualWidth + Math.floor((rightGap - cardW) / 2);
+            brandY = Math.floor((targetHeight - cardH) / 2);
+        } else {
+            brandX = Math.floor((targetWidth - cardW) / 2);
+            brandY = targetHeight - cardH - 28;
+        }
+        this._drawBrandCard(ctx, brandX, brandY, cardW, cardH);
+
         const link = document.createElement('a');
         link.download = `pixel-art-pure-${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png');
@@ -1537,24 +1721,44 @@ class PixelArtGenerator {
         const dataWidth = this.pixelData[0].length;
         const dataHeight = this.pixelData.length;
         const coordSize = 60;
-        const legendWidth = 180;
 
         const usedColors = this.currentColors.filter(c => this.beadCountMap.get(c.hex) > 0);
-        
-        const availableMainWidth = targetWidth - coordSize - legendWidth - 40;
-        const availableMainHeight = targetHeight - coordSize - 40;
 
-        const mainPixelSize = Math.min(Math.floor(availableMainWidth / dataWidth), Math.floor(availableMainHeight / dataHeight));
+        // 引流卡片紧贴图例正下方，两张卡片宽度一致、外框同色
+        const cardH = 132;
+        const bottomBrand = cardH + 36;
+        const contentH = targetHeight - bottomBrand;
+        const beadMM = parseFloat(this.beadSizeSelect?.value || 5);
+        const bbox = this._bbox;
+        const hasInfo = !!(bbox && bbox.maxX >= 0);
+
+        // ===== 右侧信息卡片尺寸（内容自适应，区域整体放大） =====
+        const pad = 24;              // 卡片内边距
+        const rowHeight = 40;        // 色号行高
+        const boxSize = 24;          // 色块大小
+        const headH = 88;            // 标题 + 副标题 + 分隔线 + 列表起点
+        const infoH = hasInfo ? 96 : 16;  // 列表下方分隔线 + 实物尺寸信息块 + 底部
+        const availableMainHeight = contentH - coordSize - 40;
+        const maxRows = Math.max(1, Math.floor((availableMainHeight - headH - infoH) / rowHeight));
+        const legendColumns = Math.max(1, Math.ceil(usedColors.length / maxRows));
+        const legendRows = Math.max(1, Math.ceil(usedColors.length / legendColumns));
+        // 统一卡片宽度：内容所需宽度（列宽 250）与最小宽度 430 取大
+        const cardW = Math.max(legendColumns * 250 + pad * 2, 430);
+        const colWidth = (cardW - pad * 2) / legendColumns;
+        const legendH = headH + legendRows * rowHeight + infoH + pad;
+
+        // ===== 主图尺寸（主图 + 图例整体居中于内容区） =====
+        const availableMainWidth = targetWidth - coordSize - cardW - 60;
+        const mainPixelSize = Math.max(8, Math.min(Math.floor(availableMainWidth / dataWidth), Math.floor(availableMainHeight / dataHeight)));
         const mainWidth = dataWidth * mainPixelSize;
         const mainHeight = dataHeight * mainPixelSize;
 
-        const legendItemHeight = mainPixelSize;
-        const perColumnCount = Math.max(1, Math.floor((mainHeight - 60) / (mainPixelSize * 2))); // 每个颜色占两行格子高度
-        const legendColumns = Math.ceil(usedColors.length / perColumnCount);
-        const legendFontSize = Math.max(8, mainPixelSize * 0.35);
-        const legendColWidth = Math.max(120, legendFontSize * 10 + 30);
-        const actualLegendWidth = legendColumns * legendColWidth + 20;
-        const legendMinHeight = mainHeight + coordSize;
+        const totalW = mainWidth + coordSize + 40 + cardW;
+        const mainOffsetX = Math.floor((targetWidth - totalW) / 2);
+        const mainOffsetY = Math.floor((contentH - mainHeight - coordSize) / 2);
+        const legendX = mainOffsetX + mainWidth + coordSize + 24;
+        // 卡片上边缘与效果图（网格图案区域）上边框对齐，不含坐标轴行
+        const legendY = mainOffsetY + coordSize;
 
         const canvas = document.createElement('canvas');
         canvas.width = targetWidth;
@@ -1565,15 +1769,7 @@ class PixelArtGenerator {
         ctx.fillStyle = '#f5f5f0';
         ctx.fillRect(0, 0, targetWidth, targetHeight);
 
-        const mainOffsetX = Math.floor((targetWidth - mainWidth - coordSize - actualLegendWidth) / 2);
-        const mainOffsetY = Math.floor((targetHeight - mainHeight - coordSize) / 2);
-
-        const legendX = mainOffsetX + mainWidth + coordSize + 15;
-        const legendHeight = mainHeight + coordSize;
-
-        ctx.fillStyle = '#f5f5f0';
-        this.roundRect(ctx, legendX - 10, mainOffsetY, actualLegendWidth + 20, legendHeight, 6);
-
+        // 主图背景
         ctx.fillStyle = '#f5f5f0';
         this.roundRect(ctx, mainOffsetX, mainOffsetY, mainWidth + coordSize, mainHeight + coordSize, 6);
 
@@ -1660,54 +1856,98 @@ class PixelArtGenerator {
             ctx.stroke();
         }
 
-        // 实物尺寸信息
-        let infoY = mainOffsetY + 22;
-        const beadMM = parseFloat(this.beadSizeSelect?.value || 5);
-        const bbox = this._bbox;
-        if (bbox && bbox.maxX >= 0) {
+        // ===== 右侧信息卡片 =====
+        // 卡片背景（外框与引流卡片一致的品牌粉）
+        ctx.fillStyle = '#FBF7F8';
+        this.roundRect(ctx, legendX, legendY, cardW, legendH, 14);
+        ctx.strokeStyle = '#F4A0B8';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        const y0 = legendY + pad;
+        const contentW = cardW - pad * 2;
+
+        // 标题：色号清单（品牌色粗体），品牌名作为下方副标题，避免与标题重合
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#D4528A';
+        ctx.font = 'bold 30px "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
+        ctx.fillText('色号清单', legendX + pad, y0 + 20);
+        const selectedPaletteKey = this.paletteSelect ? this.paletteSelect.value : 'mard291';
+        const selectedPaletteName = palettes[selectedPaletteKey] ? palettes[selectedPaletteKey].name : 'MARD 全色 291';
+        ctx.fillStyle = '#333333';
+        ctx.font = '19px "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
+        ctx.fillText(selectedPaletteName, legendX + pad, y0 + 46);
+
+        // 分隔线
+        ctx.strokeStyle = '#EAD6DB';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(legendX + pad, y0 + 64);
+        ctx.lineTo(legendX + cardW - pad, y0 + 64);
+        ctx.stroke();
+
+        // 色号列表：色块 + 名称（左） + 数量（列内右对齐）
+        const listY = y0 + 80;
+        usedColors.forEach((color, index) => {
+            const col = Math.floor(index / legendRows);
+            const row = index % legendRows;
+            const x = legendX + pad + col * colWidth;
+            const y = listY + row * rowHeight;
+
+            // 色块（圆角）
+            ctx.fillStyle = color.hex;
+            this.roundRect(ctx, x, y + (rowHeight - boxSize) / 2, boxSize, boxSize, 6);
+            ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // 名称
+            ctx.fillStyle = '#333333';
+            ctx.font = '19px "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(color.name, x + boxSize + 12, y + rowHeight / 2 + 1);
+
+            // 数量（右对齐，字体颜色与色号一致）
+            ctx.fillStyle = '#333333';
+            ctx.font = '19px "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(`${this.beadCountMap.get(color.hex)}颗`, x + colWidth - 8, y + rowHeight / 2 + 1);
+        });
+
+        // 列表下方分隔线
+        const listBottom = listY + legendRows * rowHeight + 12;
+        ctx.strokeStyle = '#EAD6DB';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(legendX + pad, listBottom);
+        ctx.lineTo(legendX + cardW - pad, listBottom);
+        ctx.stroke();
+
+        // 实物尺寸信息块（放在色号清单下方，字体与色号一致）
+        if (hasInfo) {
             const wBeads = bbox.maxX - bbox.minX + 1;
             const hBeads = bbox.maxY - bbox.minY + 1;
             const wCM = ((wBeads * beadMM) / 10).toFixed(1);
             const hCM = ((hBeads * beadMM) / 10).toFixed(1);
-            ctx.fillStyle = '#333333';
-            ctx.font = 'bold 18px Arial';
+            const infoY = listBottom + 16;
+            ctx.fillStyle = '#FCE9EE';
+            this.roundRect(ctx, legendX + pad, infoY, contentW, 58, 10);
             ctx.textAlign = 'left';
-            ctx.fillText(`📏 实物尺寸: ${wCM}×${hCM}cm`, legendX, infoY);
-            ctx.font = '14px Arial';
-            ctx.fillText(`(${wBeads}×${hBeads} 豆 · ${beadMM}mm/粒)`, legendX, infoY + 16);
-            infoY += 40;
+            ctx.fillStyle = '#333333';
+            ctx.font = '19px "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
+            ctx.fillText(`📏 实物尺寸  ${wCM}×${hCM}cm`, legendX + pad + 18, infoY + 21);
+            ctx.fillStyle = '#333333';
+            ctx.font = '19px "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
+            ctx.fillText(`${wBeads}×${hBeads} 豆 · ${beadMM}mm/粒`, legendX + pad + 18, infoY + 42);
         }
 
-        ctx.fillStyle = '#333333';
-        ctx.font = 'bold 20px Arial';
-        ctx.textAlign = 'left';
-
-        const selectedPaletteKey = this.paletteSelect ? this.paletteSelect.value : 'mard291';
-        const selectedPaletteName = palettes[selectedPaletteKey] ? palettes[selectedPaletteKey].name : 'MARD 全色 291';
-        ctx.fillText(`色号清单 (${selectedPaletteName})`, legendX, infoY);
-
-        ctx.fillStyle = '#333333';
-        ctx.fillRect(legendX, infoY + 12, actualLegendWidth - 20, 1);
-
-        const colorBoxSize = Math.min(mainPixelSize - 4, 16);
-        
-        usedColors.forEach((color, index) => {
-            const col = Math.floor(index / perColumnCount);
-            const row = index % perColumnCount;
-            const y = infoY + 25 + row * mainPixelSize + (mainPixelSize - colorBoxSize) / 2;
-            const x = legendX + col * legendColWidth;
-
-            ctx.fillStyle = color.hex;
-            ctx.fillRect(x, y, colorBoxSize, colorBoxSize);
-            ctx.strokeStyle = '#333333';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(x, y, colorBoxSize, colorBoxSize);
-
-            ctx.fillStyle = '#333333';
-            ctx.font = `${Math.max(8, mainPixelSize * 0.35)}px Arial`;
-            ctx.textAlign = 'left';
-            ctx.fillText(`${color.name} - ${this.beadCountMap.get(color.hex)}颗`, x + colorBoxSize + 4, y + colorBoxSize / 2 + 3);
-        });
+        // 引流卡片：与色号清单卡片同宽、同外框色、紧贴其正下方
+        const brandX = legendX;
+        let brandY = legendY + legendH + 14;
+        if (brandY + cardH > targetHeight - 16) brandY = targetHeight - cardH - 16;
+        this._drawBrandCard(ctx, brandX, brandY, cardW, cardH);
 
         const link = document.createElement('a');
         link.download = `pixel-art-full-${Date.now()}.png`;
@@ -1875,15 +2115,18 @@ class PixelArtGenerator {
                     // 颜色编号
                     if (this._showLabels && pixelSize >= 8 && p.color.name) {
                         const fz4 = Math.max(6, Math.round(pixelSize * 0.35));
-                        ctx.font = `bold ${fz4}px -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif`;
+                        ctx.font = `bold ${fz4}px Arial, sans-serif`;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         const hr4 = parseInt(p.color.hex.slice(1, 3), 16);
                         const hg4 = parseInt(p.color.hex.slice(3, 5), 16);
                         const hb4 = parseInt(p.color.hex.slice(5, 7), 16);
                         const lum4 = (0.299 * hr4 + 0.587 * hg4 + 0.114 * hb4) / 255;
-                        ctx.fillStyle = lum4 > 0.55 ? '#000000' : '#ffffff';
+                        ctx.fillStyle = lum4 > 0.5 ? '#000000' : '#ffffff';
+                        ctx.shadowColor = lum4 > 0.5 ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.7)';
+                        ctx.shadowBlur = 3;
                         ctx.fillText(p.color.name, coordSize + x * pixelSize + pixelSize / 2, coordSize + y * pixelSize + pixelSize / 2);
+                        ctx.shadowBlur = 0;
                     }
                 }
             }
@@ -1905,6 +2148,7 @@ class PixelArtGenerator {
     clearAll() {
         this.imageInput.value = '';
         this.originalImage = null;
+        this.currentImageDataURL = null;
         this.pixelCanvas = null;
         this.currentColors = [];
         this.beadCountMap.clear();
@@ -1917,6 +2161,9 @@ class PixelArtGenerator {
 
         if (this.originalImageContainer) {
             this.originalImageContainer.classList.remove('has-image');
+            // 恢复默认的 row + 正方形比例
+            this.originalImageContainer.style.flexDirection = '';
+            this.originalImageContainer.style.aspectRatio = '';
             this.originalImageContainer.innerHTML = `
                 <input type="file" id="imageInput" accept="image/*" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.001; font-size: 0; cursor: pointer; z-index: 3;">
                 <label for="imageInput" class="upload-prompt">
@@ -1956,6 +2203,150 @@ class PixelArtGenerator {
         }
 
         this.enableExportButton();
+    }
+
+    // ============ 图片裁剪 ============
+
+    /** 打开裁剪弹窗 */
+    _openCrop() {
+        if (!this.currentImageDataURL) return;
+        this.cropImage.src = this.currentImageDataURL;
+        this.cropModal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+        // 图片可能已缓存导致 onload 不触发，双保险初始化
+        this.cropImage.onload = () => this._initCropSelect();
+        requestAnimationFrame(() => this._initCropSelect());
+    }
+
+    _closeCrop() {
+        this.cropModal.classList.remove('show');
+        document.body.style.overflow = '';
+        this._cropDragging = false;
+        this._cropDragStart = null;
+        this._cropSel = null;
+        this.cropImage.removeAttribute('src');
+    }
+
+    /** 图片在裁剪区内的实际显示矩形（相对 stage 的坐标） */
+    _getImageDisplayRect() {
+        const img = this.cropImage;
+        const stage = this.cropStage;
+        if (!img.naturalWidth || !img.clientWidth) return null;
+        const stageRect = stage.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+        return {
+            left: imgRect.left - stageRect.left,
+            top: imgRect.top - stageRect.top,
+            width: imgRect.width,
+            height: imgRect.height
+        };
+    }
+
+    /** 初始化为全选 */
+    _initCropSelect() {
+        const rect = this._getImageDisplayRect();
+        if (!rect) return;
+        this._cropSel = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+        this._updateCropOverlay();
+    }
+
+    _cropPointerDown(e) {
+        const imgRect = this._getImageDisplayRect();
+        if (!imgRect) return;
+        const stageRect = this.cropStage.getBoundingClientRect();
+        const x = e.clientX - stageRect.left;
+        const y = e.clientY - stageRect.top;
+        // 只允许在图片区域内开始框选
+        if (x < imgRect.left || x > imgRect.left + imgRect.width ||
+            y < imgRect.top || y > imgRect.top + imgRect.height) return;
+        this._cropDragging = true;
+        if (this.cropStage.setPointerCapture) this.cropStage.setPointerCapture(e.pointerId);
+        this._cropDragStart = { x, y };
+    }
+
+    _cropPointerMove(e) {
+        if (!this._cropDragging || !this._cropDragStart) return;
+        const imgRect = this._getImageDisplayRect();
+        if (!imgRect) return;
+        const stageRect = this.cropStage.getBoundingClientRect();
+        // 裁剪选区限制在图片范围内
+        const x = Math.max(imgRect.left, Math.min(imgRect.left + imgRect.width, e.clientX - stageRect.left));
+        const y = Math.max(imgRect.top, Math.min(imgRect.top + imgRect.height, e.clientY - stageRect.top));
+        this._cropSel = {
+            left: Math.min(this._cropDragStart.x, x),
+            top: Math.min(this._cropDragStart.y, y),
+            width: Math.abs(x - this._cropDragStart.x),
+            height: Math.abs(y - this._cropDragStart.y)
+        };
+        this._updateCropOverlay();
+    }
+
+    _cropPointerUp() {
+        if (!this._cropDragging) return;
+        this._cropDragging = false;
+        this._cropDragStart = null;
+        // 误触产生的小选区恢复为全选
+        if (this._cropSel && (this._cropSel.width < 4 || this._cropSel.height < 4)) {
+            this._initCropSelect();
+        }
+    }
+
+    /** 更新选区框、四块遮罩和尺寸信息 */
+    _updateCropOverlay() {
+        if (!this._cropSel) return;
+        const s = this._cropSel;
+        const stageW = this.cropStage.clientWidth;
+        const stageH = this.cropStage.clientHeight;
+        const right = s.left + s.width;
+        const bottom = s.top + s.height;
+
+        this.cropMaskTop.style.cssText = `left:0;top:0;width:${stageW}px;height:${s.top}px;`;
+        this.cropMaskBottom.style.cssText = `left:0;top:${bottom}px;width:${stageW}px;height:${Math.max(0, stageH - bottom)}px;`;
+        this.cropMaskLeft.style.cssText = `left:0;top:${s.top}px;width:${s.left}px;height:${s.height}px;`;
+        this.cropMaskRight.style.cssText = `left:${right}px;top:${s.top}px;width:${Math.max(0, stageW - right)}px;height:${s.height}px;`;
+        this.cropSelectEl.style.cssText = `left:${s.left}px;top:${s.top}px;width:${s.width}px;height:${s.height}px;`;
+
+        // 换算为原图像素尺寸
+        const img = this.cropImage;
+        if (img.naturalWidth && img.clientWidth) {
+            const pw = Math.round(s.width * img.naturalWidth / img.clientWidth);
+            const ph = Math.round(s.height * img.naturalHeight / img.clientHeight);
+            this.cropInfo.textContent = `选中 ${pw} × ${ph} px`;
+        } else {
+            this.cropInfo.textContent = '';
+        }
+    }
+
+    /** 确认裁剪：按选区裁出图片并替换当前图片 */
+    _confirmCrop() {
+        if (!this._cropSel || !this.cropImage.naturalWidth) return;
+        const img = this.cropImage;
+        const s = this._cropSel;
+        const scaleX = img.naturalWidth / img.clientWidth;
+        const scaleY = img.naturalHeight / img.clientHeight;
+        const sw = Math.max(1, Math.round(s.width * scaleX));
+        const sh = Math.max(1, Math.round(s.height * scaleY));
+        const sx = Math.max(0, Math.min(img.naturalWidth - sw, Math.round(s.left * scaleX)));
+        const sy = Math.max(0, Math.min(img.naturalHeight - sh, Math.round(s.top * scaleY)));
+
+        const cvs = document.createElement('canvas');
+        cvs.width = sw;
+        cvs.height = sh;
+        const cctx = cvs.getContext('2d');
+        cctx.imageSmoothingEnabled = true;
+        cctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+        const croppedURL = cvs.toDataURL('image/png');
+
+        const newImg = new Image();
+        newImg.onload = () => {
+            this.originalImage = newImg;
+            this.currentImageDataURL = croppedURL;
+            this.showOriginalImage(croppedURL);
+            this._closeCrop();
+            showToast('已裁剪，正在重新生成…');
+            this.scheduleAutoGenerate();
+        };
+        newImg.src = croppedURL;
     }
 }
 

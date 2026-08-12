@@ -19,29 +19,35 @@ function showToast(message) {
 class PixelEditor {
   constructor() {
     this.gridData = [];         // 2D: cell = { color: {hex,name} } | null
-    this.gridWidth = 29;
-    this.gridHeight = 29;
+    this.gridWidth = 58;
+    this.gridHeight = 58;
     this.currentTool = 'paint'; // paint | eraser | fill
     this.selectedColor = null;  // { hex, name }
     this.isDrawing = false;
     this.cellSize = 30;
     this._bbox = null;
     this._zoomFactor = 1.0;
-    this._touchPinchDist = 0;
-    this._touchPinchCS = 0;
+    this._userZoomed = false;   // 用户是否手动缩放过（resize 时保持其绝对值）
+    this._pinch = null;         // 双指缩放状态 { dist0, cs0 }
+    this._touchPending = null;  // 单指延迟落笔的起点格子
+    this._touchTimer = null;    // 单指延迟落笔定时器
     this._showCellLabels = true;
 
     this.initElements();
     this.setupEventListeners();
-    this.resizeGrid(29, 29);
-    // 窗口缩放时重算格子大小
+    this.resizeGrid(58, 58);
+    // 窗口缩放时重算格子大小（保持用户当前的绝对格子大小）
     window.addEventListener('resize', () => {
-      if (this.gridData.length) this._updateCellSize();
+      if (this.gridData.length) {
+        this._updateCellSize(true);
+        this._fitCanvasToWrap();
+      }
     });
   }
 
   initElements() {
     this.canvas = document.getElementById('editorCanvas');
+    this.canvasWrap = this.canvas.parentElement;
     this.ctx = this.canvas.getContext('2d');
 
     this.gridSizeSelect = document.getElementById('editorGridSize');
@@ -77,10 +83,33 @@ class PixelEditor {
     this.beadSizeSelect = document.getElementById("editorBeadSize");
     this.physicalSizeEl = document.getElementById("editorPhysicalSize");
 
+    // 裁剪弹窗
+    this.cropModal = document.getElementById('cropModal');
+    this.cropCloseBtn = document.getElementById('cropClose');
+    this.cropStage = document.getElementById('cropStage');
+    this.cropImage = document.getElementById('cropImage');
+    this.cropMaskTop = document.getElementById('cropMaskTop');
+    this.cropMaskBottom = document.getElementById('cropMaskBottom');
+    this.cropMaskLeft = document.getElementById('cropMaskLeft');
+    this.cropMaskRight = document.getElementById('cropMaskRight');
+    this.cropSelectEl = document.getElementById('cropSelect');
+    this.cropInfo = document.getElementById('cropInfo');
+    this.cropResetBtn = document.getElementById('cropReset');
+    this.cropConfirmBtn = document.getElementById('cropConfirm');
+    this._cropSel = null;      // { left, top, width, height } 相对 stage 的显示坐标
+    this._cropDragging = false;
+    this._cropDragStart = null;
+
     // 创建悬浮提示
     this._hoverTimer = null;
     this._hoverCell = null;
-    this._createTooltip(); // 暂存上传图片的像素化结果
+    this._createTooltip();
+
+    // 监听中间画布容器尺寸变化，让 canvas 始终铺满容器
+    this._resizeObserver = new ResizeObserver(() => {
+      this._fitCanvasToWrap();
+    });
+    this._resizeObserver.observe(this.canvasWrap);
   }
 
   setupEventListeners() {
@@ -150,12 +179,26 @@ class PixelEditor {
     this.canvas.addEventListener('touchmove', (e) => { e.preventDefault(); this._onTouchMove(e); }, { passive: false });
     this.canvas.addEventListener('touchend', (e) => { e.preventDefault(); this._onTouchEnd(e); }, { passive: false });
 
-    // 滚轮缩放
+    // 滚轮缩放：乘法步进（幅度随 deltaY 平滑变化）+ 以鼠标为锚点
     this.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.08 : 0.08;
-      this._zoomBy(delta);
+      const steps = Math.max(0.2, Math.min(3, Math.abs(e.deltaY) / 100));
+      const ratio = Math.pow(1.1, e.deltaY > 0 ? -steps : steps);
+      this._zoomByFactor(ratio, e.clientX, e.clientY);
     }, { passive: false });
+
+    // 缩放控件：+/− 以画布区中心为锚，百分比按钮恢复适应屏幕
+    const zoomAtCenter = (ratio) => {
+      const wrap = this.canvasWrap;
+      const r = wrap.getBoundingClientRect();
+      this._zoomByFactor(ratio, r.left + wrap.clientWidth / 2, r.top + wrap.clientHeight / 2);
+    };
+    const zoomIn = document.getElementById('createZoomIn');
+    const zoomOut = document.getElementById('createZoomOut');
+    const zoomReset = document.getElementById('createZoomBadge');
+    if (zoomIn) zoomIn.addEventListener('click', () => zoomAtCenter(1.25));
+    if (zoomOut) zoomOut.addEventListener('click', () => zoomAtCenter(1 / 1.25));
+    if (zoomReset) zoomReset.addEventListener('click', () => this._resetZoom());
 
     // 上传图片
     this.uploadArea.addEventListener('click', () => this.imageInput.click());
@@ -187,8 +230,22 @@ class PixelEditor {
       if (this.gridData.some(row => row.some(c => c !== null))) {
         if (!confirm('确认清空所有颜色？')) return;
       }
-      this.resizeGrid(this.gridWidth, this.gridHeight);
+      this.clearGrid();
     });
+
+    // 裁剪弹窗
+    if (this.cropCloseBtn) {
+      this.cropCloseBtn.addEventListener('click', () => this._closeCrop());
+      this.cropModal.addEventListener('click', (e) => { if (e.target === this.cropModal) this._closeCrop(); });
+      this.cropResetBtn.addEventListener('click', () => this._initCropSelect());
+      this.cropConfirmBtn.addEventListener('click', () => this._confirmCrop());
+      this.cropStage.addEventListener('pointerdown', (e) => this._cropPointerDown(e));
+      window.addEventListener('pointermove', (e) => this._cropPointerMove(e));
+      window.addEventListener('pointerup', () => this._cropPointerUp());
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && this.cropModal.classList.contains('show')) this._closeCrop();
+      });
+    }
 
     // 可折叠面板
     if (this.importHeader) {
@@ -269,8 +326,13 @@ class PixelEditor {
       this.gridData.push(row);
     }
 
-    this.render();
+    this._fitCanvasToWrap();
     this.updateStats();
+
+    // 已导入图片时，网格大小变化后自动按新尺寸重新像素化，无需再次点击导入按钮
+    if (this.importedImageData) {
+      this._applyImport(true);
+    }
   }
 
   clearGrid() {
@@ -282,43 +344,108 @@ class PixelEditor {
   }
 
   // 自适应格子大小（根据视口实时计算）
-  _updateCellSize() {
+  // keepUserZoom=true 时（窗口 resize）保留用户当前的绝对格子大小，仅同步比例
+  _updateCellSize(keepUserZoom) {
     const w = this.gridWidth;
     const h = this.gridHeight;
     const isMobile = window.innerWidth < 1024;
     const sidebarW = isMobile ? 0 : 310;
     const headerH = 60;
     const pad = isMobile ? 60 : 40;
-    this.coordSize = Math.max(16, Math.min(28, Math.floor(this.cellSize * 0.9)));
-    const availW = window.innerWidth - sidebarW - pad - this.coordSize;
-    const availH = window.innerHeight - headerH - pad - this.coordSize;
-    this.cellSize = Math.max(10, Math.min(
+    // 工程视图：图案仅占容器约 70%，四周留出工程空白格
+    const availW = (window.innerWidth - sidebarW - pad) * 0.7;
+    const availH = (window.innerHeight - headerH - pad) * 0.7;
+    const base = Math.max(8, Math.min(
       Math.floor(availW / w),
       Math.floor(availH / h),
       50
     ));
-    this._baseCellSize = this.cellSize;
-    this._applyZoom();
-    this.coordSize = Math.max(16, Math.min(28, Math.floor(this.cellSize * 0.9)));
-    this.canvas.width = w * this.cellSize + this.coordSize;
-    this.canvas.height = h * this.cellSize + this.coordSize;
-    if (this.canvasTip) this.canvasTip.style.display = 'none';
-  }
-
-  _applyZoom() {
-    this.cellSize = Math.max(10, Math.min(80, Math.round(this._baseCellSize * this._zoomFactor)));
+    this._baseCellSize = base;
+    if (keepUserZoom && this._userZoomed) {
+      // 保持用户当前格子大小不变，factor 反算（允许超过 [0.1,10] 范围）
+      this.cellSize = Math.max(4, Math.min(80, this.cellSize));
+      this._zoomFactor = this.cellSize / base;
+    } else {
+      this.cellSize = base;
+      this._zoomFactor = 1;
+      this._userZoomed = false;
+    }
+    this._applySize();
     this._updateZoomBadge();
   }
 
-  _zoomBy(delta) {
-    this._zoomFactor = Math.max(0.3, Math.min(3.0, this._zoomFactor + delta));
-    if (this._baseCellSize) {
-      this.cellSize = Math.max(10, Math.min(80, Math.round(this._baseCellSize * this._zoomFactor)));
+  // 按当前 cellSize 更新坐标区文字大小（工程视图不单独预留坐标轴像素条）
+  _applySize() {
+    this.coordSize = Math.max(10, Math.min(18, Math.floor(this.cellSize * 0.5)));
+  }
+
+  // 让 canvas 铺满中间容器，并重绘
+  _fitCanvasToWrap() {
+    const wrap = this.canvasWrap;
+    if (!wrap) return;
+    const w = wrap.clientWidth;
+    const h = wrap.clientHeight;
+    if (w === 0 || h === 0) return;
+    this.canvas.width = w;
+    this.canvas.height = h;
+    this.render();
+  }
+
+  // 从 _zoomFactor 应用缩放（不重绘，由调用方决定是否 render）
+  _applyZoom() {
+    this.cellSize = Math.max(4, Math.min(80, Math.round(this._baseCellSize * this._zoomFactor)));
+    this._applySize();
+    this._updateZoomBadge();
+  }
+
+  // 缩放：ratio 为乘法系数（>1 放大，<1 缩小），clientX/Y 为锚点屏幕坐标（null 则用画布区中心）
+  _zoomByFactor(ratio, clientX, clientY) {
+    if (!this._baseCellSize) return;
+    const s0 = this.cellSize;
+    const W = this.gridWidth, H = this.gridHeight;
+    const cw = this.canvas.width, ch = this.canvas.height;
+
+    // 当前图案偏移（未手动设置过则用居中）
+    const offsetX0 = this._lastOffsetX != null ? this._lastOffsetX : (cw - W * s0) / 2;
+    const offsetY0 = this._lastOffsetY != null ? this._lastOffsetY : (ch - H * s0) / 2;
+
+    // 锚点像素位置（相对于 canvas 显示区域）
+    let apx, apy;
+    if (clientX != null && clientY != null) {
+      const rect = this.canvas.getBoundingClientRect();
+      apx = clientX - rect.left;
+      apy = clientY - rect.top;
+    } else {
+      apx = cw / 2;
+      apy = ch / 2;
     }
-    const w = this.gridWidth, h = this.gridHeight;
-    this.coordSize = Math.max(16, Math.min(28, Math.floor(this.cellSize * 0.9)));
-    this.canvas.width = w * this.cellSize + this.coordSize;
-    this.canvas.height = h * this.cellSize + this.coordSize;
+
+    // 锚点对应的工程坐标
+    const engX = (apx - offsetX0) / s0 + 1;
+    const engY = (apy - offsetY0) / s0 + 1;
+
+    // 应用新格子大小
+    const newCS = Math.max(4, Math.min(80, Math.round(s0 * ratio)));
+    if (newCS === s0) return;
+    this._userZoomed = true;
+    this.cellSize = newCS;
+    this._zoomFactor = newCS / this._baseCellSize;
+    this._applySize();
+    this._updateZoomBadge();
+
+    // 新偏移：让锚点工程坐标仍位于原屏幕位置
+    this._lastOffsetX = apx - (engX - 1) * newCS;
+    this._lastOffsetY = apy - (engY - 1) * newCS;
+
+    this.render();
+  }
+
+  // 恢复适应屏幕（100%）
+  _resetZoom() {
+    this._userZoomed = false;
+    this._zoomFactor = 1;
+    this.cellSize = this._baseCellSize;
+    this._applySize();
     this.render();
     this._updateZoomBadge();
   }
@@ -342,26 +469,30 @@ class PixelEditor {
 
   _getCellFromEvent(clientX, clientY) {
     const rect = this.canvas.getBoundingClientRect();
-    const cs = this.coordSize || 0;
-    const gridW = this.gridWidth;
-    const gridH = this.gridHeight;
-    const cellW = (rect.width - cs) / gridW;
-    const cellH = (rect.height - cs) / gridH;
-    const x = Math.floor(((clientX - rect.left) - cs) / cellW);
-    const y = Math.floor(((clientY - rect.top) - cs) / cellH);
-    return { x, y };
+    const wrap = this.canvasWrap;
+    const px = clientX - rect.left + wrap.scrollLeft;
+    const py = clientY - rect.top + wrap.scrollTop;
+    const s = this.cellSize;
+    const offsetX = this._lastOffsetX;
+    const offsetY = this._lastOffsetY;
+    const ex = Math.floor((px - offsetX) / s) + 1;
+    const ey = Math.floor((py - offsetY) / s) + 1;
+    const x = ex - 1;
+    const y = ey - 1;
+    const inGrid = x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight;
+    return { x, y, out: !inGrid };
   }
 
   _onPointerDown(e) {
-    const { x, y } = this._getCellFromEvent(e.clientX, e.clientY);
-    if (x < 0 || x >= this.gridWidth || y < 0 || y >= this.gridHeight) return;
+    const { x, y, out } = this._getCellFromEvent(e.clientX, e.clientY);
+    if (out) return;
     this.isDrawing = true;
     this._applyTool(x, y);
   }
 
   _onPointerMove(e) {
-    const { x, y } = this._getCellFromEvent(e.clientX, e.clientY);
-    if (x < 0 || x >= this.gridWidth || y < 0 || y >= this.gridHeight) {
+    const { x, y, out } = this._getCellFromEvent(e.clientX, e.clientY);
+    if (out) {
       this._hideTooltip();
       return;
     }
@@ -395,49 +526,97 @@ class PixelEditor {
 
   _onTouchStart(e) {
     if (e.touches.length === 2) {
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
-      this._touchPinchDist = Math.sqrt(dx * dx + dy * dy);
-      this._touchPinchCS = this.cellSize;
-      this.isDrawing = false;
+      this._beginPinch(e);
       return;
     }
+    // 单指：延迟 80ms 再落笔——若期间第二指落下进入缩放，则不误画起点
     const touch = e.touches[0];
-    const { x, y } = this._getCellFromEvent(touch.clientX, touch.clientY);
-    if (x < 0 || x >= this.gridWidth || y < 0 || y >= this.gridHeight) return;
-    this.isDrawing = true;
-    this._applyTool(x, y);
+    const { x, y, out } = this._getCellFromEvent(touch.clientX, touch.clientY);
+    this._touchPending = { x, y };
+    clearTimeout(this._touchTimer);
+    this._touchTimer = setTimeout(() => {
+      this._touchTimer = null;
+      this._touchPending = null;
+      if (out) return;
+      this.isDrawing = true;
+      this._applyTool(x, y);
+    }, 80);
+  }
+
+  _beginPinch(e) {
+    clearTimeout(this._touchTimer);
+    this._touchTimer = null;
+    this._touchPending = null;
+    this.isDrawing = false;
+    const t0 = e.touches[0], t1 = e.touches[1];
+    const dx = t0.clientX - t1.clientX;
+    const dy = t0.clientY - t1.clientY;
+    this._pinch = {
+      dist0: Math.max(1, Math.sqrt(dx * dx + dy * dy)),
+      cs0: this.cellSize
+    };
   }
 
   _onTouchMove(e) {
-    if (e.touches.length === 2 && this._touchPinchDist > 0) {
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const scale = dist / this._touchPinchDist;
-      const newCS = Math.max(10, Math.min(80, Math.round(this._touchPinchCS * scale)));
-      if (newCS !== this.cellSize) {
-        this.cellSize = newCS;
-        this._zoomFactor = this.cellSize / this._baseCellSize;
-        const w = this.gridWidth, h = this.gridHeight;
-        this.coordSize = Math.max(16, Math.min(28, Math.floor(this.cellSize * 0.9)));
-        this.canvas.width = w * this.cellSize + this.coordSize;
-        this.canvas.height = h * this.cellSize + this.coordSize;
-        this.render();
-        this._updateZoomBadge();
-      }
+    if (e.touches.length === 2 && this._pinch) {
+      this._updatePinch(e);
       return;
     }
+    // 单指移动：立即补画起点，保证拖动绘制无延迟
+    if (this._touchPending) {
+      const { x, y } = this._touchPending;
+      this._touchPending = null;
+      clearTimeout(this._touchTimer);
+      this._touchTimer = null;
+      if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+        this.isDrawing = true;
+        this._applyTool(x, y);
+      }
+    }
     const touch = e.touches[0];
-    const { x, y } = this._getCellFromEvent(touch.clientX, touch.clientY);
-    if (x < 0 || x >= this.gridWidth || y < 0 || y >= this.gridHeight) return;
+    const { x, y, out } = this._getCellFromEvent(touch.clientX, touch.clientY);
+    if (out) return;
     if (this.isDrawing) this._applyTool(x, y);
   }
 
+  _updatePinch(e) {
+    const t0 = e.touches[0], t1 = e.touches[1];
+    const dx = t0.clientX - t1.clientX;
+    const dy = t0.clientY - t1.clientY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 10) return;
+    const scale = dist / this._pinch.dist0;
+    const newCS = Math.max(4, Math.min(80, Math.round(this._pinch.cs0 * scale)));
+    if (newCS === this.cellSize) return;
+
+    // 锚点：两指中心，缩放前后该中心下的内容保持不动
+    const midX = (t0.clientX + t1.clientX) / 2;
+    const midY = (t0.clientY + t1.clientY) / 2;
+    const wrap = this.canvasWrap;
+    const oldW = this.canvas.width, oldH = this.canvas.height;
+    const rect = this.canvas.getBoundingClientRect();
+    const contentX = (midX - rect.left) + wrap.scrollLeft;
+    const contentY = (midY - rect.top) + wrap.scrollTop;
+
+    this.cellSize = newCS;
+    this._userZoomed = true;
+    this._zoomFactor = this.cellSize / this._baseCellSize;
+    this._applySize();
+    this.render();
+    this._updateZoomBadge();
+
+    const newRect = this.canvas.getBoundingClientRect();
+    const sX = this.canvas.width / oldW;
+    const sY = this.canvas.height / oldH;
+    wrap.scrollLeft = contentX * sX - (midX - newRect.left);
+    wrap.scrollTop = contentY * sY - (midY - newRect.top);
+  }
+
   _onTouchEnd(e) {
-    if (e.touches.length === 0) {
-      this._touchPinchDist = 0;
-    }
+    clearTimeout(this._touchTimer);
+    this._touchTimer = null;
+    this._touchPending = null;
+    if (e.touches.length < 2) this._pinch = null;
     if (e.touches.length < 2) this._onPointerUp();
   }
 
@@ -492,10 +671,11 @@ class PixelEditor {
     if (x < 0 || x >= this.gridWidth || y < 0 || y >= this.gridHeight) return;
     const ctx = this.ctx;
     const s = this.cellSize;
-    const cs = this.coordSize || 0;
+    const px = this._lastOffsetX + x * s;
+    const py = this._lastOffsetY + y * s;
     ctx.strokeStyle = '#ff0000';
     ctx.lineWidth = 2;
-    ctx.strokeRect(cs + x * s + 1, cs + y * s + 1, s - 2, s - 2);
+    ctx.strokeRect(px + 1, py + 1, s - 2, s - 2);
   }
 
   // ============ 渲染 ============
@@ -503,111 +683,110 @@ class PixelEditor {
   render() {
     const ctx = this.ctx;
     const s = this.cellSize;
-    const cs = this.coordSize || 24;
-    const w = this.gridWidth;
-    const h = this.gridHeight;
+    const W = this.gridWidth;
+    const H = this.gridHeight;
+    const cw = this.canvas.width;
+    const ch = this.canvas.height;
 
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    // 背景铺满
+    ctx.fillStyle = '#f7f8fb';
+    ctx.fillRect(0, 0, cw, ch);
 
-    // 背景
-    ctx.fillStyle = '#f0f0f5';
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    // 图案居中偏移（工程坐标 (1,1) 对应图案左上角）
+    const offsetX = (cw - W * s) / 2;
+    const offsetY = (ch - H * s) / 2;
+    this._lastOffsetX = offsetX;
+    this._lastOffsetY = offsetY;
 
-    // 坐标区背景
-    ctx.fillStyle = '#e8e9f0';
-    ctx.fillRect(0, 0, w * s + cs, cs);
-    ctx.fillRect(0, 0, cs, h * s + cs);
+    // 可见工程坐标范围（以 1-based 工程坐标）
+    const minEngX = Math.floor((0 - offsetX) / s) + 1;
+    const maxEngX = Math.floor((cw - offsetX) / s) + 1;
+    const minEngY = Math.floor((0 - offsetY) / s) + 1;
+    const maxEngY = Math.floor((ch - offsetY) / s) + 1;
 
-    // 绘制每个格子
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
+    // 工程网格背景线
+    ctx.lineWidth = 1;
+    for (let ex = minEngX; ex <= maxEngX; ex++) {
+      const x = offsetX + (ex - 1) * s;
+      ctx.strokeStyle = ex % 5 === 0 ? '#d0dceb' : '#eef2f9';
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, ch);
+      ctx.stroke();
+    }
+    for (let ey = minEngY; ey <= maxEngY; ey++) {
+      const y = offsetY + (ey - 1) * s;
+      ctx.strokeStyle = ey % 5 === 0 ? '#d0dceb' : '#eef2f9';
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(cw, y);
+      ctx.stroke();
+    }
+
+    // 绘制图案内容（只绘制可见区域）
+    const minDataX = Math.max(0, minEngX - 1);
+    const maxDataX = Math.min(W - 1, maxEngX - 1);
+    const minDataY = Math.max(0, minEngY - 1);
+    const maxDataY = Math.min(H - 1, maxEngY - 1);
+
+    for (let y = minDataY; y <= maxDataY; y++) {
+      for (let x = minDataX; x <= maxDataX; x++) {
         const cell = this.gridData[y][x];
-        if (cell) {
-          ctx.fillStyle = cell.hex;
-          ctx.fillRect(cs + x * s, cs + y * s, s, s);
-          // 色号标签
-          if (this._showCellLabels && s >= 11 && cell.name) {
-            const fz = Math.max(6, Math.min(Math.floor(s * 0.35), 12));
-            ctx.font = `bold ${fz}px -apple-system, 'PingFang SC', sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            const hr = parseInt(cell.hex.slice(1,3),16);
-            const hg = parseInt(cell.hex.slice(3,5),16);
-            const hb = parseInt(cell.hex.slice(5,7),16);
-            const lum = (0.299*hr + 0.587*hg + 0.114*hb)/255;
-            ctx.fillStyle = lum > 0.55 ? '#000' : '#fff';
-            ctx.fillText(cell.name, cs + x*s + s/2, cs + y*s + s/2);
-          }
+        if (!cell) continue;
+        const px = offsetX + x * s;
+        const py = offsetY + y * s;
+        ctx.fillStyle = cell.hex;
+        ctx.fillRect(px, py, s, s);
+        // 色号标签
+        if (this._showCellLabels && s >= 11 && cell.name) {
+          const fz = Math.max(6, Math.min(Math.floor(s * 0.35), 12));
+          ctx.font = `bold ${fz}px Arial, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const hr = parseInt(cell.hex.slice(1,3),16);
+          const hg = parseInt(cell.hex.slice(3,5),16);
+          const hb = parseInt(cell.hex.slice(5,7),16);
+          const lum = (0.299*hr + 0.587*hg + 0.114*hb)/255;
+          ctx.fillStyle = lum > 0.5 ? '#000' : '#fff';
+          ctx.shadowColor = lum > 0.5 ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.7)';
+          ctx.shadowBlur = 3;
+          ctx.fillText(cell.name, px + s/2, py + s/2);
+          ctx.shadowBlur = 0;
         }
       }
     }
 
-    // 列坐标：小网格全显，大网格隔5显
-    const dense = Math.max(w, h) < 30;
-    const step = dense ? 1 : 5;
-    ctx.fillStyle = '#555';
-    ctx.font = `bold ${Math.max(8, Math.min(11, Math.floor(s/3)))}px Arial`;
+    // 坐标轴数字（步长 5，1-based 工程坐标）
+    const labelColor = '#667799';
+    const labelFont = `bold ${Math.max(9, Math.min(12, Math.floor(s/2.5)))}px Arial, sans-serif`;
+    ctx.font = labelFont;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    for (let x = 0; x < w; x++) {
-      if ((x + 1) % step === 0) {
-        ctx.fillText(x + 1, cs + x * s + s/2, cs/2);
-      }
+    ctx.fillStyle = labelColor;
+
+    // 顶部坐标轴（y 轴负方向）
+    const topY = Math.max(12, offsetY - 10);
+    for (let ex = minEngX; ex <= maxEngX; ex++) {
+      if (ex % 5 !== 0) continue;
+      const x = offsetX + (ex - 1) * s + s / 2;
+      if (x < 10 || x > cw - 10) continue;
+      ctx.fillText(String(ex), x, topY);
     }
 
-    // 行坐标
+    // 左侧坐标轴（x 轴负方向）
+    const leftX = Math.max(12, offsetX - 10);
     ctx.textAlign = 'right';
-    for (let y = 0; y < h; y++) {
-      if ((y + 1) % step === 0) {
-        ctx.fillText(y + 1, cs - 4, cs + y * s + s/2);
-      }
+    for (let ey = minEngY; ey <= maxEngY; ey++) {
+      if (ey % 5 !== 0) continue;
+      const y = offsetY + (ey - 1) * s + s / 2;
+      if (y < 10 || y > ch - 10) continue;
+      ctx.fillText(String(ey), leftX, y);
     }
 
-    // 网格线
-    ctx.strokeStyle = '#e0e0e8';
-    ctx.lineWidth = 0.5;
-    for (let x = 0; x <= w; x++) {
-      ctx.beginPath();
-      ctx.moveTo(cs + x * s, cs);
-      ctx.lineTo(cs + x * s, cs + h * s);
-      ctx.stroke();
-    }
-    for (let y = 0; y <= h; y++) {
-      ctx.beginPath();
-      ctx.moveTo(cs, cs + y * s);
-      ctx.lineTo(cs + w * s, cs + y * s);
-      ctx.stroke();
-    }
-
-    // 每5格粗线
-    ctx.strokeStyle = '#999';
-    ctx.lineWidth = 1.5;
-    for (let x = 5; x < w; x += 5) {
-      ctx.beginPath();
-      ctx.moveTo(cs + x * s, cs);
-      ctx.lineTo(cs + x * s, cs + h * s);
-      ctx.stroke();
-    }
-    for (let y = 5; y < h; y += 5) {
-      ctx.beginPath();
-      ctx.moveTo(cs, cs + y * s);
-      ctx.lineTo(cs + w * s, cs + y * s);
-      ctx.stroke();
-    }
-
-    // 中心十字线
-    ctx.strokeStyle = '#ff0000';
+    // 图案红色边界框
+    ctx.strokeStyle = '#ff4d4f';
     ctx.lineWidth = 2;
-    const midX = Math.floor(w / 2);
-    const midY = Math.floor(h / 2);
-    ctx.beginPath();
-    ctx.moveTo(cs + midX * s, cs);
-    ctx.lineTo(cs + midX * s, cs + h * s);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(cs, cs + midY * s);
-    ctx.lineTo(cs + w * s, cs + midY * s);
-    ctx.stroke();
+    ctx.strokeRect(offsetX, offsetY, W * s, H * s);
   }
 
   // ============ 色板 ============
@@ -643,7 +822,7 @@ class PixelEditor {
       const hg = parseInt(c.hex.slice(3,5),16);
       const hb = parseInt(c.hex.slice(5,7),16);
       const lum = (0.299*hr + 0.587*hg + 0.114*hb)/255;
-      span.style.color = lum > 0.55 ? '#000' : '#fff';
+      span.style.color = lum > 0.5 ? '#000' : '#fff';
       div.appendChild(span);
       div.addEventListener('click', () => this.selectColor(c.hex, c.name));
       this.paletteGrid.appendChild(div);
@@ -674,34 +853,200 @@ class PixelEditor {
       img.onload = () => {
         this.importedImageData = { img, dataURL: e.target.result };
         this.importBtn.disabled = false;
-        // 在导入区域显示缩略图
-        const area = this.uploadArea;
-        area.innerHTML = '';
-        area.style.padding = '8px';
-        const thumb = document.createElement('img');
-        thumb.src = e.target.result;
-        thumb.style.maxWidth = '100%';
-        thumb.style.maxHeight = '120px';
-        thumb.style.borderRadius = '6px';
-        thumb.style.display = 'block';
-        thumb.style.margin = '0 auto';
-        thumb.alt = '上传预览';
-        area.appendChild(thumb);
-        const label = document.createElement('div');
-        label.style.fontSize = '0.75rem';
-        label.style.color = 'var(--text-muted)';
-        label.style.textAlign = 'center';
-        label.style.marginTop = '4px';
-        label.textContent = '点击重新选择';
-        area.appendChild(label);
-        showToast('图片已加载，点击"导入并像素化"');
+        this._updateThumbnail(e.target.result);
+        showToast('图片已加载，可裁剪后导入');
       };
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
   }
 
-  _applyImport() {
+  /** 在导入区显示缩略图 + 裁剪/重新选择按钮 */
+  _updateThumbnail(dataURL, cropped) {
+    const area = this.uploadArea;
+    area.innerHTML = '';
+    area.style.padding = '8px';
+    const thumb = document.createElement('img');
+    thumb.src = dataURL;
+    thumb.style.maxWidth = '100%';
+    thumb.style.maxHeight = '120px';
+    thumb.style.borderRadius = '6px';
+    thumb.style.display = 'block';
+    thumb.style.margin = '0 auto';
+    thumb.alt = '上传预览';
+    area.appendChild(thumb);
+
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.gap = '6px';
+    row.style.marginTop = '6px';
+
+    const cropBtn = document.createElement('button');
+    cropBtn.type = 'button';
+    cropBtn.className = 'btn btn-secondary';
+    cropBtn.style.flex = '1';
+    cropBtn.style.padding = '5px 8px';
+    cropBtn.style.fontSize = '0.75rem';
+    cropBtn.textContent = '✂️ 裁剪';
+    cropBtn.addEventListener('click', (e) => { e.stopPropagation(); this._openCrop(); });
+
+    const reselectBtn = document.createElement('button');
+    reselectBtn.type = 'button';
+    reselectBtn.className = 'btn btn-secondary';
+    reselectBtn.style.flex = '1';
+    reselectBtn.style.padding = '5px 8px';
+    reselectBtn.style.fontSize = '0.75rem';
+    reselectBtn.textContent = '重新选择';
+    reselectBtn.addEventListener('click', (e) => { e.stopPropagation(); this.imageInput.click(); });
+
+    row.appendChild(cropBtn);
+    row.appendChild(reselectBtn);
+    area.appendChild(row);
+    if (cropped) showToast('已裁剪，可导入像素化');
+  }
+
+  // ============ 图片裁剪 ============
+
+  /** 打开裁剪弹窗 */
+  _openCrop() {
+    if (!this.importedImageData) return;
+    this.cropImage.src = this.importedImageData.dataURL;
+    this.cropModal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    // 图片可能已缓存导致 onload 不触发，双保险初始化
+    this.cropImage.onload = () => this._initCropSelect();
+    requestAnimationFrame(() => this._initCropSelect());
+  }
+
+  _closeCrop() {
+    this.cropModal.classList.remove('show');
+    document.body.style.overflow = '';
+    this._cropDragging = false;
+    this._cropDragStart = null;
+    this._cropSel = null;
+    this.cropImage.removeAttribute('src');
+  }
+
+  /** 图片在裁剪区内的实际显示矩形（相对 stage 的坐标） */
+  _getImageDisplayRect() {
+    const img = this.cropImage;
+    const stage = this.cropStage;
+    if (!img.naturalWidth || !img.clientWidth) return null;
+    const stageRect = stage.getBoundingClientRect();
+    const imgRect = img.getBoundingClientRect();
+    return {
+      left: imgRect.left - stageRect.left,
+      top: imgRect.top - stageRect.top,
+      width: imgRect.width,
+      height: imgRect.height
+    };
+  }
+
+  /** 初始化为全选 */
+  _initCropSelect() {
+    const rect = this._getImageDisplayRect();
+    if (!rect) return;
+    this._cropSel = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+    this._updateCropOverlay();
+  }
+
+  _cropPointerDown(e) {
+    const imgRect = this._getImageDisplayRect();
+    if (!imgRect) return;
+    const stageRect = this.cropStage.getBoundingClientRect();
+    const x = e.clientX - stageRect.left;
+    const y = e.clientY - stageRect.top;
+    // 只允许在图片区域内开始框选
+    if (x < imgRect.left || x > imgRect.left + imgRect.width ||
+        y < imgRect.top || y > imgRect.top + imgRect.height) return;
+    this._cropDragging = true;
+    if (this.cropStage.setPointerCapture) this.cropStage.setPointerCapture(e.pointerId);
+    this._cropDragStart = { x, y };
+  }
+
+  _cropPointerMove(e) {
+    if (!this._cropDragging || !this._cropDragStart) return;
+    const imgRect = this._getImageDisplayRect();
+    if (!imgRect) return;
+    const stageRect = this.cropStage.getBoundingClientRect();
+    // 裁剪选区限制在图片范围内
+    const x = Math.max(imgRect.left, Math.min(imgRect.left + imgRect.width, e.clientX - stageRect.left));
+    const y = Math.max(imgRect.top, Math.min(imgRect.top + imgRect.height, e.clientY - stageRect.top));
+    this._cropSel = {
+      left: Math.min(this._cropDragStart.x, x),
+      top: Math.min(this._cropDragStart.y, y),
+      width: Math.abs(x - this._cropDragStart.x),
+      height: Math.abs(y - this._cropDragStart.y)
+    };
+    this._updateCropOverlay();
+  }
+
+  _cropPointerUp() {
+    if (!this._cropDragging) return;
+    this._cropDragging = false;
+    this._cropDragStart = null;
+    // 误触产生的小选区恢复为全选
+    if (this._cropSel && (this._cropSel.width < 4 || this._cropSel.height < 4)) {
+      this._initCropSelect();
+    }
+  }
+
+  /** 更新选区框、四块遮罩和尺寸信息 */
+  _updateCropOverlay() {
+    if (!this._cropSel) return;
+    const s = this._cropSel;
+    const stageW = this.cropStage.clientWidth;
+    const stageH = this.cropStage.clientHeight;
+    const right = s.left + s.width;
+    const bottom = s.top + s.height;
+
+    this.cropMaskTop.style.cssText = `left:0;top:0;width:${stageW}px;height:${s.top}px;`;
+    this.cropMaskBottom.style.cssText = `left:0;top:${bottom}px;width:${stageW}px;height:${Math.max(0, stageH - bottom)}px;`;
+    this.cropMaskLeft.style.cssText = `left:0;top:${s.top}px;width:${s.left}px;height:${s.height}px;`;
+    this.cropMaskRight.style.cssText = `left:${right}px;top:${s.top}px;width:${Math.max(0, stageW - right)}px;height:${s.height}px;`;
+    this.cropSelectEl.style.cssText = `left:${s.left}px;top:${s.top}px;width:${s.width}px;height:${s.height}px;`;
+
+    // 换算为原图像素尺寸
+    const img = this.cropImage;
+    if (img.naturalWidth && img.clientWidth) {
+      const pw = Math.round(s.width * img.naturalWidth / img.clientWidth);
+      const ph = Math.round(s.height * img.naturalHeight / img.clientHeight);
+      this.cropInfo.textContent = `选中 ${pw} × ${ph} px`;
+    } else {
+      this.cropInfo.textContent = '';
+    }
+  }
+
+  /** 确认裁剪：按选区裁出图片并替换当前待导入图片 */
+  _confirmCrop() {
+    if (!this._cropSel || !this.cropImage.naturalWidth) return;
+    const img = this.cropImage;
+    const s = this._cropSel;
+    const scaleX = img.naturalWidth / img.clientWidth;
+    const scaleY = img.naturalHeight / img.clientHeight;
+    const sw = Math.max(1, Math.round(s.width * scaleX));
+    const sh = Math.max(1, Math.round(s.height * scaleY));
+    const sx = Math.max(0, Math.min(img.naturalWidth - sw, Math.round(s.left * scaleX)));
+    const sy = Math.max(0, Math.min(img.naturalHeight - sh, Math.round(s.top * scaleY)));
+
+    const cvs = document.createElement('canvas');
+    cvs.width = sw;
+    cvs.height = sh;
+    const cctx = cvs.getContext('2d');
+    cctx.imageSmoothingEnabled = true;
+    cctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+    const croppedURL = cvs.toDataURL('image/png');
+
+    const newImg = new Image();
+    newImg.onload = () => {
+      this.importedImageData = { img: newImg, dataURL: croppedURL };
+      this._updateThumbnail(croppedURL, true);
+      this._closeCrop();
+    };
+    newImg.src = croppedURL;
+  }
+
+  _applyImport(auto) {
     if (!this.importedImageData) return;
     const img = this.importedImageData.img;
     const colorCount = parseInt(this.importColorsSlider.value);
@@ -766,7 +1111,7 @@ class PixelEditor {
 
     this.render();
     this.updateStats();
-    showToast('导入完成，可逐格修改颜色');
+    showToast(auto ? '网格已调整，已自动重新像素化' : '导入完成，可逐格修改颜色');
   }
 
   _flattenPalette(brand) {
@@ -848,14 +1193,13 @@ class PixelEditor {
 
     if (sorted.length > 0) {
       html += `<div style="margin-top:8px;max-height:120px;overflow-y:auto;font-size:0.8rem">`;
-      for (const [hex, count] of sorted.slice(0, 15)) {
+      for (const [hex, count] of sorted) {
         const name = this._findColorName(hex);
         html += `<div style="display:flex;align-items:center;gap:6px;padding:2px 0">
           <span style="width:14px;height:14px;border-radius:3px;background:${hex};border:1px solid #ddd;flex-shrink:0"></span>
           <span>${name || hex}</span><span style="margin-left:auto;color:var(--text-muted)">${count}格</span>
         </div>`;
       }
-      if (sorted.length > 15) html += `<p style="color:var(--text-muted);margin-top:4px">...还有 ${sorted.length-15} 种颜色</p>`;
       html += `</div>`;
     }
     this.statsEl.innerHTML = html;

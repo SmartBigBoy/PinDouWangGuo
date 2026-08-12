@@ -794,6 +794,11 @@ body {
     transform: translateY(-1px);
     box-shadow: 0 3px 10px rgba(var(--primary-rgb), 0.35);
 }
+/* 色号开关激活态：加边框提示当前已开启，底色与全屏按钮一致 */
+.fullscreen-title-btn.active {
+    outline: 2px solid rgba(255, 255, 255, 0.55);
+    outline-offset: 1px;
+}
 
 /* ===== Fullscreen color navigation bar (底部逐色导航) ===== */
 .fs-color-bar {
@@ -927,18 +932,17 @@ body {
     width: 100vw;
     height: 100vh;
     background: #1a1a2e;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    padding: 0 0 60px 0;
+    display: block;
+    overflow: hidden;        /* 超出视口部分由 canvas transform 控制显示区域 */
+    padding: 0 0 56px 0;
 }
 
 .pixel-canvas-wrapper:fullscreen #pixelatedCanvas {
-    /* renderFullRes 已根据视口算好最佳尺寸，无需 CSS 拉伸 */
-    max-width: 100vw;
-    max-height: 100vh;
-    width: auto;
-    height: auto;
+    /* 位置由 JS 的 transform: translate() 控制（锚点缩放 + 拖动平移） */
+    position: absolute;
+    top: 0;
+    left: 0;
+    will-change: transform;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
 }
@@ -948,17 +952,16 @@ body {
     width: 100vw;
     height: 100vh;
     background: #1a1a2e;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    padding: 0 0 60px 0;
+    display: block;
+    overflow: hidden;
+    padding: 0 0 56px 0;
 }
 
 .pixel-canvas-wrapper:-webkit-full-screen #pixelatedCanvas {
-    max-width: 100vw;
-    max-height: 100vh;
-    width: auto;
-    height: auto;
+    position: absolute;
+    top: 0;
+    left: 0;
+    will-change: transform;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
 }
