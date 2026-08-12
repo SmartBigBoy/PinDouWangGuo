@@ -359,8 +359,8 @@ class PixelArtGenerator {
         const selected = this.gridSizeSelect.value;
         if (selected === 'custom') {
             return {
-                width: Math.max(5, Math.min(200, parseInt(this.gridWidthInput.value) || 58)),
-                height: Math.max(5, Math.min(200, parseInt(this.gridHeightInput.value) || 58))
+                width: Math.max(5, Math.min(252, parseInt(this.gridWidthInput.value) || 58)),
+                height: Math.max(5, Math.min(252, parseInt(this.gridHeightInput.value) || 58))
             };
         }
         const [w, h] = selected.split('x').map(Number);

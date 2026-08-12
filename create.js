@@ -131,15 +131,15 @@ class PixelEditor {
     });
     this.gridWInput.addEventListener('change', () => {
       if (this.gridSizeSelect.value === 'custom') {
-        const w = Math.max(5, Math.min(200, parseInt(this.gridWInput.value) || 20));
-        const h = Math.max(5, Math.min(200, parseInt(this.gridHInput.value) || 20));
+        const w = Math.max(5, Math.min(252, parseInt(this.gridWInput.value) || 58));
+        const h = Math.max(5, Math.min(252, parseInt(this.gridHInput.value) || 58));
         this.resizeGrid(w, h);
       }
     });
     this.gridHInput.addEventListener('change', () => {
       if (this.gridSizeSelect.value === 'custom') {
-        const w = Math.max(5, Math.min(200, parseInt(this.gridWInput.value) || 20));
-        const h = Math.max(5, Math.min(200, parseInt(this.gridHInput.value) || 20));
+        const w = Math.max(5, Math.min(252, parseInt(this.gridWInput.value) || 58));
+        const h = Math.max(5, Math.min(252, parseInt(this.gridHInput.value) || 58));
         this.resizeGrid(w, h);
       }
     });
@@ -393,13 +393,16 @@ class PixelEditor {
     this.coordSize = Math.max(10, Math.min(18, Math.floor(this.cellSize * 0.5)));
   }
 
-  // 让 canvas 铺满中间容器，并重绘
+  // 让 canvas 铺满中间容器（扣除 padding，避免溢出滚动条），并重绘
   _fitCanvasToWrap() {
     const wrap = this.canvasWrap;
     if (!wrap) return;
-    const w = wrap.clientWidth;
-    const h = wrap.clientHeight;
-    if (w === 0 || h === 0) return;
+    const cs = getComputedStyle(wrap);
+    const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+    const padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+    const w = wrap.clientWidth - padX;
+    const h = wrap.clientHeight - padY;
+    if (w <= 0 || h <= 0) return;
     this.canvas.width = w;
     this.canvas.height = h;
     this.render();
@@ -959,44 +962,60 @@ class PixelEditor {
     thumb.alt = '上传预览';
     area.appendChild(thumb);
 
-    const row = document.createElement('div');
-    row.style.display = 'flex';
-    row.style.gap = '6px';
-    row.style.marginTop = '6px';
+    const actions = document.createElement('div');
+    actions.className = 'thumb-actions';
 
-    const cropBtn = document.createElement('button');
-    cropBtn.type = 'button';
-    cropBtn.className = 'btn btn-secondary';
-    cropBtn.style.flex = '1';
-    cropBtn.style.padding = '5px 8px';
-    cropBtn.style.fontSize = '0.75rem';
-    cropBtn.textContent = '✂️ 裁剪';
-    cropBtn.addEventListener('click', (e) => { e.stopPropagation(); this._openCrop(); });
+    const makeBtn = (text, onClick) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-secondary';
+      b.textContent = text;
+      b.addEventListener('click', (e) => { e.stopPropagation(); onClick(e); });
+      return b;
+    };
 
-    const reselectBtn = document.createElement('button');
-    reselectBtn.type = 'button';
-    reselectBtn.className = 'btn btn-secondary';
-    reselectBtn.style.flex = '1';
-    reselectBtn.style.padding = '5px 8px';
-    reselectBtn.style.fontSize = '0.75rem';
-    reselectBtn.textContent = '重新选择';
-    reselectBtn.addEventListener('click', (e) => { e.stopPropagation(); this.imageInput.click(); });
-
-    const cutoutBtn = document.createElement('button');
-    cutoutBtn.type = 'button';
-    cutoutBtn.className = 'btn btn-secondary';
-    cutoutBtn.style.flex = '1';
-    cutoutBtn.style.padding = '5px 8px';
-    cutoutBtn.style.fontSize = '0.75rem';
-    cutoutBtn.textContent = '🪄 自动抠图';
-    cutoutBtn.addEventListener('click', (e) => { e.stopPropagation(); this._autoCutout(); });
+    const cropBtn = makeBtn('✂️ 裁剪', () => this._openCrop());
+    const cutoutBtn = makeBtn('🪄 自动抠图', () => this._autoCutout());
     this._cutoutBtn = cutoutBtn;
+    const mirrorBtn = makeBtn('🔄 镜像', () => this._mirrorImage());
+    const reselectBtn = makeBtn('📷 重新选择', () => this.imageInput.click());
 
-    row.appendChild(cropBtn);
-    row.appendChild(cutoutBtn);
-    row.appendChild(reselectBtn);
-    area.appendChild(row);
+    actions.appendChild(cropBtn);
+    actions.appendChild(cutoutBtn);
+    actions.appendChild(mirrorBtn);
+    actions.appendChild(reselectBtn);
+    area.appendChild(actions);
     if (cropped) showToast('已裁剪，可导入像素化');
+  }
+
+  /** 图片左右镜像（水平翻转）：更新待导入图片与缩略图，画布已生成图案时自动重新像素化 */
+  _mirrorImage() {
+    if (!this.importedImageData) return;
+    const img = this.importedImageData.img;
+    const w = img.naturalWidth, h = img.naturalHeight;
+    if (!w || !h) return;
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const cx = c.getContext('2d');
+    cx.translate(w, 0);
+    cx.scale(-1, 1);
+    cx.drawImage(img, 0, 0);
+    const url = c.toDataURL('image/png');
+
+    const newImg = new Image();
+    newImg.onload = () => {
+      this.importedImageData = { img: newImg, dataURL: url };
+      this._updateThumbnail(url);
+      // 画布已有图案时自动按镜像后的图片重新像素化，保持画布与图片一致
+      const hasArt = this.gridData.length && this.gridData.some(row => row.some(cell => cell !== null));
+      if (hasArt) {
+        this._applyImport(false, '🔄 已左右镜像，图案已同步');
+      } else {
+        showToast('🔄 已左右镜像');
+      }
+    };
+    newImg.src = url;
   }
 
   // ============ 图片裁剪 ============
@@ -1143,12 +1162,16 @@ class PixelEditor {
   // ============ 自动抠图 ============
 
   /** 动态加载外部脚本，返回 Promise */
-  _loadScript(src) {
+  _loadScript(src, timeout = 20000) {
     return new Promise((resolve, reject) => {
       const s = document.createElement('script');
+      const timer = setTimeout(() => {
+        s.remove();
+        reject(new Error('脚本加载超时: ' + src));
+      }, timeout);
       s.src = src;
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error('脚本加载失败: ' + src));
+      s.onload = () => { clearTimeout(timer); resolve(); };
+      s.onerror = () => { clearTimeout(timer); reject(new Error('脚本加载失败: ' + src)); };
       document.head.appendChild(s);
     });
   }
@@ -1202,7 +1225,9 @@ class PixelEditor {
         // 无主体 → ② 加载通用模型 40→85%（真实字节进度）
         this._setCutoutProgress(40, '未检测到人像，改用通用分割…');
         const mask2 = await this._cutoutU2Net(img, (real) => {
-          this._setCutoutProgress(40 + Math.round(real * 45), '加载通用模型 ' + Math.round(real * 100) + '%');
+          // real 可能因 gzip 传输略微 >1，统一 clamp 到 [0,1]
+          const p = Math.max(0, Math.min(1, real));
+          this._setCutoutProgress(40 + Math.round(p * 45), '加载通用模型 ' + Math.round(p * 100) + '%');
         });
         if (stopFake) { stopFake(); stopFake = null; }
 
@@ -1264,25 +1289,101 @@ class PixelEditor {
     return () => clearInterval(timer);
   }
 
-  /** 带真实字节进度的模型下载（返回 ArrayBuffer） */
+  /** 带真实字节进度的模型下载（返回 ArrayBuffer），90s 超时防挂起 */
   async _fetchModel(url, onProgress) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('模型下载失败 (' + res.status + ')');
-    const total = Number(res.headers.get('Content-Length')) || 0;
-    const reader = res.body.getReader();
-    const chunks = [];
-    let received = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      received += value.length;
-      if (total && onProgress) onProgress(received / total);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 90000);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) throw new Error('模型下载失败 (' + res.status + ')');
+      const total = Number(res.headers.get('Content-Length')) || 0;
+      const reader = res.body.getReader();
+      const chunks = [];
+      let received = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length;
+        // 注意：Content-Length 可能为压缩后长度（gzip），解压流字节会超过它，需 clamp
+        if (total && onProgress) onProgress(Math.min(1, received / total));
+      }
+      const buf = new Uint8Array(received);
+      let off = 0;
+      for (const c of chunks) { buf.set(c, off); off += c.length; }
+      return buf.buffer;
+    } catch (err) {
+      if (err.name === 'AbortError') throw new Error('加载超时，请检查网络后重试');
+      throw err;
+    } finally {
+      clearTimeout(timer);
     }
-    const buf = new Uint8Array(received);
-    let off = 0;
-    for (const c of chunks) { buf.set(c, off); off += c.length; }
-    return buf.buffer;
+  }
+
+  /** 加载并缓存 AnimeGANv2 推理会话（模型 8.2MB，首次加载走真实下载进度） */
+  _getAnimeGanSession(onProgress) {
+    if (this._animeGanSession) return Promise.resolve(this._animeGanSession);
+    return this._ensureOrt()
+      .then(() => this._fetchModel('models/anime-gan-v2.onnx', onProgress))
+      .then(buf => window.ort.InferenceSession.create(buf, { executionProviders: ['wasm'] }))
+      .then(session => { this._animeGanSession = session; return session; });
+  }
+
+  /**
+   * AnimeGANv2 动漫化：输入原图 → 白底居中缩放到 512×512 → 推理 →
+   * 裁剪回内容区（保持原图宽高比），返回 canvas
+   */
+  async _cartoonize(img, onProgress) {
+    const session = await this._getAnimeGanSession(onProgress);
+    const SIZE = 512;
+    const srcW = img.naturalWidth, srcH = img.naturalHeight;
+    if (!srcW || !srcH) throw new Error('图片尺寸无效');
+    const scale = Math.min(SIZE / srcW, SIZE / srcH);
+    const dw = Math.max(1, Math.round(srcW * scale));
+    const dh = Math.max(1, Math.round(srcH * scale));
+    const ox = Math.floor((SIZE - dw) / 2);
+    const oy = Math.floor((SIZE - dh) / 2);
+
+    // 预处理：白底居中 → CHW [-1,1] float32
+    const c = document.createElement('canvas');
+    c.width = SIZE;
+    c.height = SIZE;
+    const cx = c.getContext('2d');
+    cx.fillStyle = '#ffffff';
+    cx.fillRect(0, 0, SIZE, SIZE);
+    cx.imageSmoothingEnabled = true;
+    cx.drawImage(img, ox, oy, dw, dh);
+    const d = cx.getImageData(0, 0, SIZE, SIZE).data;
+    const input = new Float32Array(3 * SIZE * SIZE);
+    for (let i = 0, j = 0; i < d.length; i += 4, j++) {
+      input[j]                = (d[i] / 255) * 2 - 1;
+      input[SIZE*SIZE + j]    = (d[i+1] / 255) * 2 - 1;
+      input[2*SIZE*SIZE + j]  = (d[i+2] / 255) * 2 - 1;
+    }
+
+    // 推理
+    const results = await session.run({ 'input.1': new window.ort.Tensor('float32', input, [1, 3, SIZE, SIZE]) });
+    const outKey = results['940'] ? '940' : Object.keys(results)[0];
+    const out = results[outKey].data;
+
+    // 后处理：反归一化 → 裁剪内容区（保持原宽高比，避免白色填充边进入图纸）
+    const outC = document.createElement('canvas');
+    outC.width = dw;
+    outC.height = dh;
+    const outCtx = outC.getContext('2d');
+    const imgData = outCtx.createImageData(dw, dh);
+    for (let y = 0; y < dh; y++) {
+      for (let x = 0; x < dw; x++) {
+        const si = ((y + oy) * SIZE + (x + ox)) * 3;
+        const di = (y * dw + x) * 4;
+        imgData.data[di]   = Math.max(0, Math.min(255, Math.round((out[si] * 0.5 + 0.5) * 255)));
+        imgData.data[di+1] = Math.max(0, Math.min(255, Math.round((out[si+1] * 0.5 + 0.5) * 255)));
+        imgData.data[di+2] = Math.max(0, Math.min(255, Math.round((out[si+2] * 0.5 + 0.5) * 255)));
+        imgData.data[di+3] = 255;
+      }
+    }
+    outCtx.putImageData(imgData, 0, 0);
+    return outC;
   }
 
   /** MediaPipe 人像分割：返回 {w,h,data:RGBA} 蒙版 */
@@ -1407,13 +1508,27 @@ class PixelEditor {
     });
   }
 
-  _applyImport(auto) {
+  async _applyImport(auto, toastText) {
     if (!this.importedImageData) return;
-    const img = this.importedImageData.img;
+    let img = this.importedImageData.img;
     const colorCount = parseInt(this.importColorsSlider.value);
     const w = this.gridWidth;
     const h = this.gridHeight;
     const isCartoon = this.importEffect === 'cartoon';
+
+    // 卡通：先 AnimeGANv2 动漫化（真动漫风：大色块 + 深描边 + 高饱和），模型不可用则降级传统卡通
+    if (isCartoon) {
+      try {
+        this._setCutoutProgress(2, '正在加载动漫模型…');
+        img = await this._cartoonize(img, (p) => {
+          this._setCutoutProgress(5 + Math.round(p * 85), '加载动漫模型 ' + Math.round(p * 100) + '%');
+        });
+        this._finishCutout('动漫化完成，正在像素化…');
+      } catch (err) {
+        console.error('AnimeGANv2 不可用，降级传统卡通:', err);
+        this._setCutoutProgress(100, '动漫模型加载失败，已用传统卡通效果', true);
+      }
+    }
 
     // 缩放到网格尺寸（标准=最近邻硬边；卡通=平滑缩放保留细节）
     const tempCanvas = document.createElement('canvas');
@@ -1425,32 +1540,9 @@ class PixelEditor {
     const imageData = tempCtx.getImageData(0, 0, w, h);
     const pixels = imageData.data;
 
-    // 卡通：饱和度增强（动漫感大色块）+ Sobel 边缘检测 + 轮廓加粗
-    let edges = null;
+    // 卡通：轻饱和度增强（AnimeGAN 输出本身已高饱和）
     if (isCartoon) {
-      this._boostSaturation(pixels, w, h, 1.3);
-      const gray = new Float32Array(w * h);
-      for (let i = 0, j = 0; i < pixels.length; i += 4, j++) {
-        gray[j] = 0.299 * pixels[i] + 0.587 * pixels[i+1] + 0.114 * pixels[i+2];
-      }
-      edges = this._detectEdges(gray, w, h, 150);
-      // 膨胀一次：让轮廓线加粗，更有动漫描边感
-      if (edges) {
-        const dilated = new Uint8Array(w * h);
-        for (let y = 0; y < h; y++) {
-          for (let x = 0; x < w; x++) {
-            const i = y * w + x;
-            if (edges[i] ||
-                (x > 0 && edges[i-1]) ||
-                (x < w-1 && edges[i+1]) ||
-                (y > 0 && edges[i-w]) ||
-                (y < h-1 && edges[i+w])) {
-              dilated[i] = 1;
-            }
-          }
-        }
-        edges = dilated;
-      }
+      this._boostSaturation(pixels, w, h, 1.1);
     }
 
     // 提取颜色（复用 generator 的逻辑需要借助实例）
@@ -1484,11 +1576,6 @@ class PixelEditor {
         const r = pixels[idx], g = pixels[idx+1], b = pixels[idx+2], a = pixels[idx+3];
         if (a < 128) {
           row.push(null);
-        } else if (isCartoon && edges && edges[y * w + x]) {
-          // 卡通轮廓：映射到色卡中的深色
-          const dark = this._findClosest({ r: 22, g: 22, b: 22 }, selectedPalette);
-          row.push(dark ? { hex: dark.hex, name: dark.name } : { hex: '#333333', name: '深灰' });
-          if (dark) usedHexes.add(dark.hex);
         } else {
           const closest = this._findClosest({ r, g, b }, selectedPalette);
           row.push(closest ? { hex: closest.hex, name: closest.name } : null);
@@ -1507,7 +1594,7 @@ class PixelEditor {
 
     this.render();
     this.updateStats();
-    showToast(auto ? '网格已调整，已自动重新像素化' : (isCartoon ? '卡通效果已生成，可逐格修改颜色' : '导入完成，可逐格修改颜色'));
+    showToast(toastText || (auto ? '网格已调整，已自动重新像素化' : (isCartoon ? '卡通效果已生成，可逐格修改颜色' : '导入完成，可逐格修改颜色')));
   }
 
   /** 就地提升像素饱和度（factor>1 增强，动漫大色块感） */
@@ -1519,36 +1606,6 @@ class PixelEditor {
       pixels[i+1] = Math.max(0, Math.min(255, Math.round(gray + (g - gray) * factor)));
       pixels[i+2] = Math.max(0, Math.min(255, Math.round(gray + (b - gray) * factor)));
     }
-  }
-
-  /**
-   * Sobel 边缘检测（含局部极大值抑制）：返回 Uint8Array（1=边缘）
-   * 先算梯度，再做 NMS 只保留 3×3 邻域内的梯度极大值，轮廓细且不会成片
-   */
-  _detectEdges(gray, w, h, threshold) {
-    const grad = new Float32Array(w * h);
-    for (let y = 1; y < h - 1; y++) {
-      for (let x = 1; x < w - 1; x++) {
-        const i = y * w + x;
-        const gx = -gray[i-w-1] - 2*gray[i-1] - gray[i+w-1] + gray[i-w+1] + 2*gray[i+1] + gray[i+w+1];
-        const gy = -gray[i-w-1] - 2*gray[i-w] - gray[i-w+1] + gray[i+w-1] + 2*gray[i+w] + gray[i+w+1];
-        grad[i] = Math.abs(gx) + Math.abs(gy);
-      }
-    }
-    const edges = new Uint8Array(w * h);
-    for (let y = 1; y < h - 1; y++) {
-      for (let x = 1; x < w - 1; x++) {
-        const i = y * w + x;
-        const gi = grad[i];
-        if (gi <= threshold) continue;
-        // 局部极大值抑制：邻域内有更大梯度则丢弃，保证轮廓为细线
-        if (gi < grad[i-w-1] || gi < grad[i-w] || gi < grad[i-w+1] ||
-            gi < grad[i-1]  || gi < grad[i+1] ||
-            gi < grad[i+w-1] || gi < grad[i+w] || gi < grad[i+w+1]) continue;
-        edges[i] = 1;
-      }
-    }
-    return edges;
   }
 
   _flattenPalette(brand) {
