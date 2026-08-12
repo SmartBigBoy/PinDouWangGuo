@@ -62,12 +62,14 @@ class PixelEditor {
     this.paintBtn = document.getElementById('paintTool');
     this.eraserBtn = document.getElementById('eraserTool');
     this.fillBtn = document.getElementById('fillTool');
+    this.moveBtn = document.getElementById('moveTool');
 
     this.uploadArea = document.getElementById('editorUploadArea');
     this.imageInput = document.getElementById('editorImageInput');
     this.importColorsSlider = document.getElementById('editorImportColors');
     this.importColorVal = document.getElementById('editorImportColorVal');
     this.importBtn = document.getElementById('editorImportBtn');
+    this.importEffect = 'standard';   // standard | cartoon
 
     this.statsEl = document.getElementById('editorStats');
     this.downloadBtn = document.getElementById('editorDownloadBtn');
@@ -167,6 +169,7 @@ class PixelEditor {
     this.paintBtn.addEventListener('click', () => this.setTool('paint'));
     this.eraserBtn.addEventListener('click', () => this.setTool('eraser'));
     this.fillBtn.addEventListener('click', () => this.setTool('fill'));
+    if (this.moveBtn) this.moveBtn.addEventListener('click', () => this.setTool('move'));
 
     // 画布鼠标事件
     this.canvas.addEventListener('mousedown', (e) => this._onPointerDown(e));
@@ -218,6 +221,17 @@ class PixelEditor {
     this.importColorsSlider.addEventListener('input', () => {
       this.importColorVal.textContent = this.importColorsSlider.value;
     });
+
+    // 导入效果切换（标准/卡通）
+    const effectToggle = document.getElementById('editorEffectToggle');
+    if (effectToggle) {
+      effectToggle.querySelectorAll('.effect-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.importEffect = btn.dataset.effect;
+          effectToggle.querySelectorAll('.effect-btn').forEach(b => b.classList.toggle('active', b === btn));
+        });
+      });
+    }
 
     // 导入按钮
     this.importBtn.addEventListener('click', () => this._applyImport());
@@ -424,8 +438,11 @@ class PixelEditor {
     const engX = (apx - offsetX0) / s0 + 1;
     const engY = (apy - offsetY0) / s0 + 1;
 
-    // 应用新格子大小
-    const newCS = Math.max(4, Math.min(80, Math.round(s0 * ratio)));
+    // 应用新格子大小（舍入后若与当前相同，强制 ±1 步进，保证滚轮始终可缩放）
+    let newCS = Math.max(4, Math.min(80, Math.round(s0 * ratio)));
+    if (newCS === s0) {
+      newCS = Math.max(4, Math.min(80, s0 + (ratio > 1 ? 1 : -1)));
+    }
     if (newCS === s0) return;
     this._userZoomed = true;
     this.cellSize = newCS;
@@ -459,10 +476,11 @@ class PixelEditor {
 
   setTool(tool) {
     this.currentTool = tool;
-    [this.paintBtn, this.eraserBtn, this.fillBtn].forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.tool === tool);
+    [this.paintBtn, this.eraserBtn, this.fillBtn, this.moveBtn].forEach(btn => {
+      if (btn) btn.classList.toggle('active', btn.dataset.tool === tool);
     });
-    this.canvas.style.cursor = tool === 'fill' ? 'cell' : 'crosshair';
+    this.canvas.style.cursor = tool === 'move' ? 'grab' : (tool === 'fill' ? 'cell' : 'crosshair');
+    this._panning = false;
   }
 
   // ============ 画布交互 ============
@@ -484,6 +502,19 @@ class PixelEditor {
   }
 
   _onPointerDown(e) {
+    // 移动工具：拖动平移图像
+    if (this.currentTool === 'move') {
+      const cw = this.canvas.width, ch = this.canvas.height;
+      const s0 = this.cellSize;
+      this._panning = true;
+      this._panStartX = e.clientX;
+      this._panStartY = e.clientY;
+      this._panStartOX = this._lastOffsetX != null ? this._lastOffsetX : (cw - this.gridWidth * s0) / 2;
+      this._panStartOY = this._lastOffsetY != null ? this._lastOffsetY : (ch - this.gridHeight * s0) / 2;
+      this.canvas.style.cursor = 'grabbing';
+      this._hideTooltip();
+      return;
+    }
     const { x, y, out } = this._getCellFromEvent(e.clientX, e.clientY);
     if (out) return;
     this.isDrawing = true;
@@ -491,6 +522,15 @@ class PixelEditor {
   }
 
   _onPointerMove(e) {
+    // 移动工具：更新图像偏移并重绘
+    if (this.currentTool === 'move') {
+      if (this._panning) {
+        this._lastOffsetX = this._panStartOX + (e.clientX - this._panStartX);
+        this._lastOffsetY = this._panStartOY + (e.clientY - this._panStartY);
+        this.render();
+      }
+      return;
+    }
     const { x, y, out } = this._getCellFromEvent(e.clientX, e.clientY);
     if (out) {
       this._hideTooltip();
@@ -514,10 +554,19 @@ class PixelEditor {
   }
 
   _onPointerUp() {
+    if (this.currentTool === 'move') {
+      this._panning = false;
+      if (this.canvas) this.canvas.style.cursor = 'grab';
+      return;
+    }
     this.isDrawing = false;
   }
 
   _onPointerLeave() {
+    if (this.currentTool === 'move') {
+      this._panning = false;
+      return;
+    }
     this.isDrawing = false;
     this._hideTooltip();
     clearTimeout(this._hoverTimer);
@@ -525,6 +574,22 @@ class PixelEditor {
   }
 
   _onTouchStart(e) {
+    if (this.currentTool === 'move') {
+      if (e.touches.length === 2) {
+        this._beginPinch(e);
+        return;
+      }
+      // 移动工具：单指直接平移
+      const touch = e.touches[0];
+      const cw = this.canvas.width, ch = this.canvas.height;
+      const s0 = this.cellSize;
+      this._panning = true;
+      this._panStartX = touch.clientX;
+      this._panStartY = touch.clientY;
+      this._panStartOX = this._lastOffsetX != null ? this._lastOffsetX : (cw - this.gridWidth * s0) / 2;
+      this._panStartOY = this._lastOffsetY != null ? this._lastOffsetY : (ch - this.gridHeight * s0) / 2;
+      return;
+    }
     if (e.touches.length === 2) {
       this._beginPinch(e);
       return;
@@ -558,6 +623,20 @@ class PixelEditor {
   }
 
   _onTouchMove(e) {
+    // 移动工具：单指拖动平移图像
+    if (this.currentTool === 'move') {
+      if (e.touches.length === 2 && this._pinch) {
+        this._updatePinch(e);
+        return;
+      }
+      if (this._panning && e.touches.length === 1) {
+        const touch = e.touches[0];
+        this._lastOffsetX = this._panStartOX + (touch.clientX - this._panStartX);
+        this._lastOffsetY = this._panStartOY + (touch.clientY - this._panStartY);
+        this.render();
+      }
+      return;
+    }
     if (e.touches.length === 2 && this._pinch) {
       this._updatePinch(e);
       return;
@@ -586,7 +665,11 @@ class PixelEditor {
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < 10) return;
     const scale = dist / this._pinch.dist0;
-    const newCS = Math.max(4, Math.min(80, Math.round(this._pinch.cs0 * scale)));
+    // 舍入后若与当前相同，强制 ±1 步进，避免双指缩放卡住
+    let newCS = Math.max(4, Math.min(80, Math.round(this._pinch.cs0 * scale)));
+    if (newCS === this.cellSize) {
+      newCS = Math.max(4, Math.min(80, this.cellSize + (scale > 1 ? 1 : -1)));
+    }
     if (newCS === this.cellSize) return;
 
     // 锚点：两指中心，缩放前后该中心下的内容保持不动
@@ -692,9 +775,9 @@ class PixelEditor {
     ctx.fillStyle = '#f7f8fb';
     ctx.fillRect(0, 0, cw, ch);
 
-    // 图案居中偏移（工程坐标 (1,1) 对应图案左上角）
-    const offsetX = (cw - W * s) / 2;
-    const offsetY = (ch - H * s) / 2;
+    // 图案偏移（优先使用用户移动/缩放后的偏移，首次未设置才居中并记录）
+    const offsetX = this._lastOffsetX != null ? this._lastOffsetX : (cw - W * s) / 2;
+    const offsetY = this._lastOffsetY != null ? this._lastOffsetY : (ch - H * s) / 2;
     this._lastOffsetX = offsetX;
     this._lastOffsetY = offsetY;
 
@@ -899,7 +982,18 @@ class PixelEditor {
     reselectBtn.textContent = '重新选择';
     reselectBtn.addEventListener('click', (e) => { e.stopPropagation(); this.imageInput.click(); });
 
+    const cutoutBtn = document.createElement('button');
+    cutoutBtn.type = 'button';
+    cutoutBtn.className = 'btn btn-secondary';
+    cutoutBtn.style.flex = '1';
+    cutoutBtn.style.padding = '5px 8px';
+    cutoutBtn.style.fontSize = '0.75rem';
+    cutoutBtn.textContent = '🪄 自动抠图';
+    cutoutBtn.addEventListener('click', (e) => { e.stopPropagation(); this._autoCutout(); });
+    this._cutoutBtn = cutoutBtn;
+
     row.appendChild(cropBtn);
+    row.appendChild(cutoutBtn);
     row.appendChild(reselectBtn);
     area.appendChild(row);
     if (cropped) showToast('已裁剪，可导入像素化');
@@ -1046,22 +1140,318 @@ class PixelEditor {
     newImg.src = croppedURL;
   }
 
+  // ============ 自动抠图 ============
+
+  /** 动态加载外部脚本，返回 Promise */
+  _loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('脚本加载失败: ' + src));
+      document.head.appendChild(s);
+    });
+  }
+
+  /** 加载 MediaPipe 人像分割（缓存） */
+  _ensureMediaPipe() {
+    if (this._mediaPipeReady) return Promise.resolve();
+    if (window.SelfieSegmentation) { this._mediaPipeReady = true; return Promise.resolve(); }
+    return this._loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1/selfie_segmentation.js')
+      .then(() => { this._mediaPipeReady = true; });
+  }
+
+  /** 加载 onnxruntime-web（缓存） */
+  _ensureOrt() {
+    if (this._ortReady) return Promise.resolve();
+    if (window.ort) { this._ortReady = true; return Promise.resolve(); }
+    return this._loadScript('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js')
+      .then(() => { this._ortReady = true; });
+  }
+
+  /** 自动抠图：先试人像分割，人体占比低则回退通用主体分割（带两阶段进度条） */
+  _autoCutout() {
+    if (!this.importedImageData || this._cutoutRunning) return;
+    const img = this.importedImageData.img;
+    this._cutoutRunning = true;
+    if (this._cutoutBtn) this._cutoutBtn.disabled = true;
+    // 展开导入面板，确保进度条可见
+    if (this.importBody) {
+      this.importBody.classList.remove('collapsed');
+      this.importBody.classList.remove('collapsed-mobile');
+      if (this.importHeader) this.importHeader.classList.remove('collapsed');
+    }
+    this._setCutoutProgress(1, '准备抠图…');
+
+    let stopFake = null;
+    const run = async () => {
+      try {
+        // ① 加载人像模型 0→30%（伪进度：script 加载无字节进度）
+        stopFake = this._startFakeProgress(30, p => this._setCutoutProgress(p, '加载人像模型 ' + Math.round(p) + '%'));
+        const mask = await this._cutoutHuman(img);
+        if (stopFake) { stopFake(); stopFake = null; }
+
+        if (mask && this._maskRatio(mask) > 0.04) {
+          // 人像成功：40→80 应用蒙版
+          this._setCutoutProgress(40, '已识别到人像，正在抠图…');
+          await this._applyCutout(img, mask, '人像');
+          this._finishCutout('完成！背景已透明');
+          return;
+        }
+
+        // 无主体 → ② 加载通用模型 40→85%（真实字节进度）
+        this._setCutoutProgress(40, '未检测到人像，改用通用分割…');
+        const mask2 = await this._cutoutU2Net(img, (real) => {
+          this._setCutoutProgress(40 + Math.round(real * 45), '加载通用模型 ' + Math.round(real * 100) + '%');
+        });
+        if (stopFake) { stopFake(); stopFake = null; }
+
+        if (mask2 && this._maskRatio(mask2) > 0.02) {
+          this._setCutoutProgress(88, '正在应用蒙版…');
+          await this._applyCutout(img, mask2, '主体');
+          this._finishCutout('完成！背景已透明');
+        } else {
+          this._setCutoutProgress(100, '未检测到明显主体，请换张图试试', true);
+        }
+      } catch (err) {
+        console.error('自动抠图失败:', err);
+        this._setCutoutProgress(100, '抠图失败：' + (err.message || '未知错误'), true);
+      } finally {
+        if (stopFake) { stopFake(); stopFake = null; }
+        this._cutoutRunning = false;
+        if (this._cutoutBtn) this._cutoutBtn.disabled = false;
+      }
+    };
+    run();
+  }
+
+  // ============ 抠图进度条控制 ============
+
+  /** 更新进度条（pct 0-100，isError 时变红） */
+  _setCutoutProgress(pct, text, isError) {
+    if (!this._cutoutWrap) {
+      this._cutoutWrap = document.getElementById('cutoutProgress');
+      this._cutoutBar = document.getElementById('cutoutProgressBar');
+      this._cutoutPct = document.getElementById('cutoutProgressPct');
+      this._cutoutText = document.getElementById('cutoutProgressText');
+    }
+    if (!this._cutoutWrap || !this._cutoutBar) return;
+    pct = Math.max(0, Math.min(100, pct));
+    this._cutoutWrap.style.display = 'block';
+    this._cutoutBar.style.width = pct + '%';
+    if (this._cutoutPct) this._cutoutPct.textContent = Math.round(pct) + '%';
+    if (this._cutoutText) this._cutoutText.textContent = text || '';
+    this._cutoutWrap.classList.toggle('error', !!isError);
+  }
+
+  /** 完成：进度到 100，1.5s 后淡出 */
+  _finishCutout(msg) {
+    this._setCutoutProgress(100, msg);
+    clearTimeout(this._cutoutHideTimer);
+    this._cutoutHideTimer = setTimeout(() => {
+      if (this._cutoutWrap) this._cutoutWrap.style.display = 'none';
+    }, 1500);
+  }
+
+  /** 伪进度：从当前值平滑递增到 target，返回停止函数 */
+  _startFakeProgress(target, onTick) {
+    let pct = 0;
+    const timer = setInterval(() => {
+      pct = Math.min(target, pct + 1.5 + Math.random() * 2.5);
+      onTick(pct);
+      if (pct >= target) clearInterval(timer);
+    }, 100);
+    return () => clearInterval(timer);
+  }
+
+  /** 带真实字节进度的模型下载（返回 ArrayBuffer） */
+  async _fetchModel(url, onProgress) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('模型下载失败 (' + res.status + ')');
+    const total = Number(res.headers.get('Content-Length')) || 0;
+    const reader = res.body.getReader();
+    const chunks = [];
+    let received = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      if (total && onProgress) onProgress(received / total);
+    }
+    const buf = new Uint8Array(received);
+    let off = 0;
+    for (const c of chunks) { buf.set(c, off); off += c.length; }
+    return buf.buffer;
+  }
+
+  /** MediaPipe 人像分割：返回 {w,h,data:RGBA} 蒙版 */
+  async _cutoutHuman(img) {
+    await this._ensureMediaPipe();
+    const seg = new window.SelfieSegmentation({
+      locateFile: (f) => 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1/' + f
+    });
+    seg.setOptions({ modelSelection: 0 });
+    const maskPromise = new Promise(resolve => seg.onResults(r => resolve(r.segmentationMask)));
+    await seg.send({ image: img });
+    const bitmap = await maskPromise;
+    if (!bitmap) return null;
+    // 转 RGBA 蒙版（与原图同尺寸）
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth;
+    c.height = img.naturalHeight;
+    const cx = c.getContext('2d');
+    cx.drawImage(bitmap, 0, 0, c.width, c.height);
+    const md = cx.getImageData(0, 0, c.width, c.height);
+    seg.close();
+    return { w: c.width, h: c.height, data: md.data };
+  }
+
+  /** U2-Net 通用主体分割：返回 {w,h,data:RGBA} 蒙版；onModelProgress 报告模型下载真实进度(0-1) */
+  async _cutoutU2Net(img, onModelProgress) {
+    await this._ensureOrt();
+    const SIZE = 320;
+    // 预处理：等比缩放到 320×320（居中填充白底）
+    const srcW = img.naturalWidth, srcH = img.naturalHeight;
+    const scale = Math.min(SIZE / srcW, SIZE / srcH);
+    const dw = Math.max(1, Math.round(srcW * scale));
+    const dh = Math.max(1, Math.round(srcH * scale));
+    const c = document.createElement('canvas');
+    c.width = SIZE; c.height = SIZE;
+    const cx = c.getContext('2d');
+    cx.fillStyle = '#ffffff';
+    cx.fillRect(0, 0, SIZE, SIZE);
+    cx.drawImage(img, (SIZE - dw) / 2, (SIZE - dh) / 2, dw, dh);
+    const d = cx.getImageData(0, 0, SIZE, SIZE).data;
+
+    const input = new Float32Array(3 * SIZE * SIZE);
+    for (let i = 0, j = 0; i < d.length; i += 4, j++) {
+      input[j]             = d[i] / 255;
+      input[SIZE*SIZE + j] = d[i+1] / 255;
+      input[2*SIZE*SIZE + j] = d[i+2] / 255;
+    }
+
+    // 模型下载（带真实进度）+ 会话缓存
+    if (!this._u2netSession) {
+      if (!this._u2netBuf) {
+        this._u2netBuf = await this._fetchModel('models/u2netp.onnx', onModelProgress);
+      }
+      this._u2netSession = await window.ort.InferenceSession.create(this._u2netBuf, { executionProviders: ['wasm'] });
+    }
+    const session = this._u2netSession;
+    const feeds = {};
+    feeds[session.inputNames[0]] = new window.ort.Tensor('float32', input, [1, 3, SIZE, SIZE]);
+    const out = await session.run(feeds);
+    const outTensor = out[session.outputNames[0]] || Object.values(out)[0];
+    const outData = outTensor.data;   // 1×1×320×320
+    const n = outData.length;
+
+    // sigmoid → 蒙版 RGBA
+    const mc = document.createElement('canvas');
+    mc.width = SIZE; mc.height = SIZE;
+    const mctx = mc.getContext('2d');
+    const mimg = mctx.createImageData(SIZE, SIZE);
+    for (let i = 0; i < n; i++) {
+      const a = Math.round((1 / (1 + Math.exp(-outData[i]))) * 255);
+      mimg.data[i*4]   = 0;
+      mimg.data[i*4+1] = 0;
+      mimg.data[i*4+2] = 0;
+      mimg.data[i*4+3] = a;
+    }
+    mctx.putImageData(mimg, 0, 0);
+
+    // 蒙版缩放到原图尺寸
+    const fc = document.createElement('canvas');
+    fc.width = srcW; fc.height = srcH;
+    const fctx = fc.getContext('2d');
+    fctx.imageSmoothingEnabled = true;
+    fctx.drawImage(mc, 0, 0, srcW, srcH);
+    const fd = fctx.getImageData(0, 0, srcW, srcH);
+    return { w: srcW, h: srcH, data: fd.data };
+  }
+
+  /** 蒙版不透明像素占比（判断是否有主体） */
+  _maskRatio(mask) {
+    if (!mask || !mask.data) return 0;
+    const d = mask.data;
+    let cnt = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] > 128) cnt++;
+    return cnt / (d.length / 4);
+  }
+
+  /** 应用蒙版：背景透明化并替换当前待导入图片（返回 Promise，完成时更新进度） */
+  _applyCutout(img, mask, label) {
+    return new Promise((resolve) => {
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth;
+      c.height = img.naturalHeight;
+      const cx = c.getContext('2d');
+      cx.drawImage(img, 0, 0);
+      const imgData = cx.getImageData(0, 0, c.width, c.height);
+      const d = imgData.data;
+      const md = mask.data;
+      for (let i = 3; i < d.length; i += 4) {
+        d[i] = Math.min(d[i], md[i]);
+      }
+      cx.putImageData(imgData, 0, 0);
+      const url = c.toDataURL('image/png');
+
+      const newImg = new Image();
+      newImg.onload = () => {
+        this.importedImageData = { img: newImg, dataURL: url };
+        this._updateThumbnail(url);
+        this._setCutoutProgress(80, '已抠出' + label + '，正在收尾…');
+        resolve();
+      };
+      newImg.src = url;
+    });
+  }
+
   _applyImport(auto) {
     if (!this.importedImageData) return;
     const img = this.importedImageData.img;
     const colorCount = parseInt(this.importColorsSlider.value);
     const w = this.gridWidth;
     const h = this.gridHeight;
+    const isCartoon = this.importEffect === 'cartoon';
 
-    // 缩放到网格尺寸（最近邻）
+    // 缩放到网格尺寸（标准=最近邻硬边；卡通=平滑缩放保留细节）
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = w;
     tempCanvas.height = h;
     const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.imageSmoothingEnabled = false;
+    tempCtx.imageSmoothingEnabled = isCartoon;
     tempCtx.drawImage(img, 0, 0, w, h);
     const imageData = tempCtx.getImageData(0, 0, w, h);
     const pixels = imageData.data;
+
+    // 卡通：饱和度增强（动漫感大色块）+ Sobel 边缘检测 + 轮廓加粗
+    let edges = null;
+    if (isCartoon) {
+      this._boostSaturation(pixels, w, h, 1.3);
+      const gray = new Float32Array(w * h);
+      for (let i = 0, j = 0; i < pixels.length; i += 4, j++) {
+        gray[j] = 0.299 * pixels[i] + 0.587 * pixels[i+1] + 0.114 * pixels[i+2];
+      }
+      edges = this._detectEdges(gray, w, h, 150);
+      // 膨胀一次：让轮廓线加粗，更有动漫描边感
+      if (edges) {
+        const dilated = new Uint8Array(w * h);
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const i = y * w + x;
+            if (edges[i] ||
+                (x > 0 && edges[i-1]) ||
+                (x < w-1 && edges[i+1]) ||
+                (y > 0 && edges[i-w]) ||
+                (y < h-1 && edges[i+w])) {
+              dilated[i] = 1;
+            }
+          }
+        }
+        edges = dilated;
+      }
+    }
 
     // 提取颜色（复用 generator 的逻辑需要借助实例）
     const palettesFlat = {};
@@ -1079,8 +1469,9 @@ class PixelEditor {
     }
     if (samples.length === 0) { showToast('图片无效', 'error'); return; }
 
-    // K-means 聚类（简化版）
-    const k = Math.min(colorCount, samples.length);
+    // K-means 聚类（简化版；卡通模式聚类数压得更狠，色块更大更动漫）
+    const effK = isCartoon ? Math.max(5, Math.round(colorCount * 0.4)) : colorCount;
+    const k = Math.min(effK, samples.length);
     const clusters = this._simpleKMeans(samples, k);
     const usedHexes = new Set();
 
@@ -1093,6 +1484,11 @@ class PixelEditor {
         const r = pixels[idx], g = pixels[idx+1], b = pixels[idx+2], a = pixels[idx+3];
         if (a < 128) {
           row.push(null);
+        } else if (isCartoon && edges && edges[y * w + x]) {
+          // 卡通轮廓：映射到色卡中的深色
+          const dark = this._findClosest({ r: 22, g: 22, b: 22 }, selectedPalette);
+          row.push(dark ? { hex: dark.hex, name: dark.name } : { hex: '#333333', name: '深灰' });
+          if (dark) usedHexes.add(dark.hex);
         } else {
           const closest = this._findClosest({ r, g, b }, selectedPalette);
           row.push(closest ? { hex: closest.hex, name: closest.name } : null);
@@ -1111,7 +1507,48 @@ class PixelEditor {
 
     this.render();
     this.updateStats();
-    showToast(auto ? '网格已调整，已自动重新像素化' : '导入完成，可逐格修改颜色');
+    showToast(auto ? '网格已调整，已自动重新像素化' : (isCartoon ? '卡通效果已生成，可逐格修改颜色' : '导入完成，可逐格修改颜色'));
+  }
+
+  /** 就地提升像素饱和度（factor>1 增强，动漫大色块感） */
+  _boostSaturation(pixels, w, h, factor) {
+    for (let i = 0; i < pixels.length; i += 4) {
+      const r = pixels[i], g = pixels[i+1], b = pixels[i+2];
+      const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+      pixels[i]   = Math.max(0, Math.min(255, Math.round(gray + (r - gray) * factor)));
+      pixels[i+1] = Math.max(0, Math.min(255, Math.round(gray + (g - gray) * factor)));
+      pixels[i+2] = Math.max(0, Math.min(255, Math.round(gray + (b - gray) * factor)));
+    }
+  }
+
+  /**
+   * Sobel 边缘检测（含局部极大值抑制）：返回 Uint8Array（1=边缘）
+   * 先算梯度，再做 NMS 只保留 3×3 邻域内的梯度极大值，轮廓细且不会成片
+   */
+  _detectEdges(gray, w, h, threshold) {
+    const grad = new Float32Array(w * h);
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
+        const gx = -gray[i-w-1] - 2*gray[i-1] - gray[i+w-1] + gray[i-w+1] + 2*gray[i+1] + gray[i+w+1];
+        const gy = -gray[i-w-1] - 2*gray[i-w] - gray[i-w+1] + gray[i+w-1] + 2*gray[i+w] + gray[i+w+1];
+        grad[i] = Math.abs(gx) + Math.abs(gy);
+      }
+    }
+    const edges = new Uint8Array(w * h);
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
+        const gi = grad[i];
+        if (gi <= threshold) continue;
+        // 局部极大值抑制：邻域内有更大梯度则丢弃，保证轮廓为细线
+        if (gi < grad[i-w-1] || gi < grad[i-w] || gi < grad[i-w+1] ||
+            gi < grad[i-1]  || gi < grad[i+1] ||
+            gi < grad[i+w-1] || gi < grad[i+w] || gi < grad[i+w+1]) continue;
+        edges[i] = 1;
+      }
+    }
+    return edges;
   }
 
   _flattenPalette(brand) {
@@ -1261,22 +1698,109 @@ class PixelEditor {
 
   // ============ 下载 ============
 
+  /** 圆角矩形（填充） */
+  roundRect(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  /** 绘制品牌引流卡片（与生成器页一致） */
+  _drawBrandCard(ctx, x, y, w, h) {
+    const iconSize = Math.round(h * 0.52);
+    const iconX = x + Math.round(w * 0.07);
+    const iconY = y + Math.round((h - iconSize) / 2);
+    const textX = iconX + iconSize + Math.round(w * 0.055);
+    const nameSize = Math.max(20, Math.round(h * 0.28));
+    const urlSize = Math.max(13, Math.round(h * 0.18));
+
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    this.roundRect(ctx, x, y, w, h, Math.round(h * 0.13));
+    ctx.strokeStyle = '#F4A0B8';
+    ctx.lineWidth = Math.max(2, Math.round(h * 0.024));
+    ctx.stroke();
+
+    const grad = ctx.createLinearGradient(iconX, iconY, iconX + iconSize, iconY + iconSize);
+    grad.addColorStop(0, '#F4A0B8');
+    grad.addColorStop(1, '#8A6FE8');
+    ctx.fillStyle = grad;
+    this.roundRect(ctx, iconX, iconY, iconSize, iconSize, Math.round(iconSize * 0.22));
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(iconX + iconSize / 2, iconY + iconSize / 2, Math.round(iconSize * 0.2), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+    ctx.lineWidth = Math.max(2, Math.round(iconSize * 0.045));
+    ctx.beginPath();
+    ctx.arc(iconX + iconSize / 2, iconY + iconSize / 2, Math.round(iconSize * 0.36), 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#D4528A';
+    ctx.font = `bold ${nameSize}px "Microsoft YaHei", "PingFang SC", Arial, sans-serif`;
+    ctx.fillText('拼豆王国', textX, y + h * 0.36);
+    ctx.fillStyle = '#777777';
+    ctx.font = `${urlSize}px "Courier New", Consolas, monospace`;
+    ctx.fillText('https://pindou.skin', textX, y + h * 0.70);
+    ctx.restore();
+  }
+
   download() {
     if (!this.gridData.length) return;
     var W = this.gridWidth, H = this.gridHeight;
-    var cs = 40, lw = 200;
-    var T = {w: 3840, h: 2160};
-    var ps = Math.max(10, Math.min(30, Math.floor((T.w - cs - lw - 80) / Math.max(W, H))));
+    var cs = 40, T = { w: 3840, h: 2160 };
+
+    // 统计颜色（按用量降序）
+    var cm = new Map(), filled = 0;
+    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) { var c = this.gridData[y][x]; if (c) { filled++; cm.set(c.hex, (cm.get(c.hex)||0)+1); } }
+    var usedColors = [...cm.entries()].sort(function(a, b) { return b[1] - a[1]; });
+
+    // ===== 右侧信息卡片尺寸（与生成器页全信息图一致） =====
+    var pad = 24, rowHeight = 40, boxSize = 24, headH = 88, cardH = 132;
+    var contentH = T.h - (cardH + 36);
+    var beadMM2 = parseFloat(this.beadSizeSelect ? this.beadSizeSelect.value : 5);
+    var bbox2 = this._bbox;
+    var hasInfo = !!(bbox2 && bbox2.maxX >= 0);
+    var infoH = hasInfo ? 96 : 16;
+    var maxRows = Math.max(1, Math.floor((contentH - cs - 40 - headH - infoH) / rowHeight));
+    var legendColumns = Math.max(1, Math.ceil(usedColors.length / maxRows));
+    var legendRows = Math.max(1, Math.ceil(usedColors.length / legendColumns));
+    var cardW = Math.max(legendColumns * 250 + pad * 2, 430);
+    var colWidth = (cardW - pad * 2) / legendColumns;
+    var legendH = headH + legendRows * rowHeight + infoH + pad;
+
+    // ===== 主图尺寸（主图 + 图例整体居中于内容区） =====
+    var availableMainWidth = T.w - cs - cardW - 60;
+    var availableMainHeight = contentH - cs - 40;
+    var ps = Math.max(8, Math.min(Math.floor(availableMainWidth / W), Math.floor(availableMainHeight / H)));
     var mw = W * ps, mh = H * ps;
+
+    var totalW = mw + cs + 40 + cardW;
+    var gx = Math.floor((T.w - totalW) / 2);
+    var gy = Math.floor((contentH - mh - cs) / 2);
+    var lx = gx + mw + cs + 24;
+    var ly = gy + cs;  // 卡片上边缘与图案上边框对齐
+
     var cvs = document.createElement('canvas');
     cvs.width = T.w; cvs.height = T.h;
     var ctx = cvs.getContext('2d');
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = '#f5f5f0'; ctx.fillRect(0, 0, T.w, T.h);
-    var gx = Math.floor((T.w - mw - cs - lw - 40) / 2);
-    var gy = Math.floor((T.h - mh - cs) / 2);
-    var lx = gx + mw + cs + 20;
+
+    // 坐标轴背景
     ctx.fillStyle = '#e8e9f0'; ctx.fillRect(gx, gy, mw + cs, cs); ctx.fillRect(gx, gy, cs, mh + cs);
+
     var lfs = Math.max(7, Math.min(11, Math.floor(ps * 0.38)));
     for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
       var cell = this.gridData[y][x];
@@ -1305,35 +1829,94 @@ class PixelEditor {
     for (var x = 0; x < W; x++) { if ((x+1) % step === 0) ctx.fillText(x+1, gx+cs+x*ps+ps/2, gy+cs/2); }
     ctx.textAlign = 'right';
     for (var y = 0; y < H; y++) { if ((y+1) % step === 0) ctx.fillText(y+1, gx+cs-8, gy+cs+y*ps+ps/2); }
-    var iy = gy + 25;
-    ctx.fillStyle = '#333'; ctx.font = 'bold 20px Arial'; ctx.textAlign = 'left';
-    ctx.fillText('🎨 拼豆创作', lx, iy); iy += 35;
-    ctx.font = '16px Arial'; ctx.fillStyle = '#555';
-    ctx.fillText('网格: ' + W + '×' + H, lx, iy); iy += 24;
-    var beadMM2 = parseFloat(this.beadSizeSelect ? this.beadSizeSelect.value : 5);
-    var bbox2 = this._bbox;
-    if (bbox2 && bbox2.maxX >= 0) {
+
+    // ===== 右侧信息卡片（与生成器页一致） =====
+    ctx.fillStyle = '#FBF7F8';
+    this.roundRect(ctx, lx, ly, cardW, legendH, 14);
+    ctx.strokeStyle = '#F4A0B8';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    var y0 = ly + pad;
+    var contentW = cardW - pad * 2;
+
+    // 标题 + 色卡名副标题
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#D4528A';
+    ctx.font = 'bold 30px "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
+    ctx.fillText('色号清单', lx + pad, y0 + 20);
+    var paletteLabel = (this.paletteSelect && this.paletteSelect.selectedOptions && this.paletteSelect.selectedOptions[0])
+      ? this.paletteSelect.selectedOptions[0].text : 'MARD';
+    ctx.fillStyle = '#333333';
+    ctx.font = '19px "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
+    ctx.fillText(paletteLabel, lx + pad, y0 + 46);
+
+    // 分隔线
+    ctx.strokeStyle = '#EAD6DB';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(lx + pad, y0 + 64);
+    ctx.lineTo(lx + cardW - pad, y0 + 64);
+    ctx.stroke();
+
+    // 色号列表：色块 + 名称（左） + 数量（右对齐）
+    var listY = y0 + 80;
+    usedColors.forEach((item, index) => {
+      var col = Math.floor(index / legendRows);
+      var row = index % legendRows;
+      var cx2 = lx + pad + col * colWidth;
+      var cy2 = listY + row * rowHeight;
+      var hex = item[0], cnt = item[1];
+
+      ctx.fillStyle = hex;
+      this.roundRect(ctx, cx2, cy2 + (rowHeight - boxSize) / 2, boxSize, boxSize, 6);
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = '#333333';
+      ctx.font = '19px "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(this._findColorName(hex), cx2 + boxSize + 12, cy2 + rowHeight / 2 + 1);
+
+      ctx.fillStyle = '#333333';
+      ctx.font = '19px "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(cnt + '颗', cx2 + colWidth - 8, cy2 + rowHeight / 2 + 1);
+    });
+
+    // 列表下方分隔线
+    var listBottom = listY + legendRows * rowHeight + 12;
+    ctx.strokeStyle = '#EAD6DB';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(lx + pad, listBottom);
+    ctx.lineTo(lx + cardW - pad, listBottom);
+    ctx.stroke();
+
+    // 实物尺寸信息块（色号清单下方）
+    if (hasInfo) {
       var bw2 = bbox2.maxX - bbox2.minX + 1, bh2 = bbox2.maxY - bbox2.minY + 1;
       var wcm2 = ((bw2 * beadMM2) / 10).toFixed(1), hcm2 = ((bh2 * beadMM2) / 10).toFixed(1);
-      ctx.fillText('实物: ' + wcm2 + '×' + hcm2 + 'cm (' + bw2 + '×' + bh2 + ' 豆, ' + beadMM2 + 'mm)', lx, iy); iy += 24;
+      var infoY = listBottom + 16;
+      ctx.fillStyle = '#FCE9EE';
+      this.roundRect(ctx, lx + pad, infoY, contentW, 58, 10);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#333333';
+      ctx.font = '19px "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
+      ctx.fillText('📏 实物尺寸  ' + wcm2 + '×' + hcm2 + 'cm', lx + pad + 18, infoY + 21);
+      ctx.fillStyle = '#333333';
+      ctx.font = '19px "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
+      ctx.fillText(bw2 + '×' + bh2 + ' 豆 · ' + beadMM2 + 'mm/粒', lx + pad + 18, infoY + 42);
     }
-    var cm = new Map(), filled = 0;
-    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) { var c = this.gridData[y][x]; if (c) { filled++; cm.set(c.hex, (cm.get(c.hex)||0)+1); } }
-    ctx.fillText('填充: ' + filled + '/' + (W*H) + '  |  颜色: ' + cm.size + '种', lx, iy); iy += 28;
-    ctx.fillStyle = '#ddd'; ctx.fillRect(lx, iy, 180, 1); iy += 16;
-    ctx.fillStyle = '#333'; ctx.font = 'bold 15px Arial';
-    ctx.fillText('色号清单', lx, iy); iy += 22;
-    var sorted = [...cm.entries()].sort(function(a,b) { return b[1]-a[1]; });
-    var bs = 14;
-    for (var i = 0; i < Math.min(sorted.length, 25); i++) {
-      var hex = sorted[i][0], cnt = sorted[i][1];
-      ctx.fillStyle = hex; ctx.fillRect(lx, iy-7, bs, bs);
-      ctx.strokeStyle = '#999'; ctx.lineWidth = 0.5; ctx.strokeRect(lx, iy-7, bs, bs);
-      ctx.fillStyle = '#333'; ctx.font = '13px Arial'; ctx.textAlign = 'left';
-      ctx.fillText(this._findColorName(hex) + ' - ' + cnt + '颗', lx+bs+8, iy+2);
-      iy += 17;
-    }
-    if (sorted.length > 25) { ctx.fillStyle = '#999'; ctx.font = '12px Arial'; ctx.fillText('...还有' + (sorted.length-25) + '种颜色', lx, iy); }
+
+    // 引流卡片：紧贴卡片下方，同宽同框色
+    var brandX = lx;
+    var brandY = ly + legendH + 14;
+    if (brandY + cardH > T.h - 16) brandY = T.h - cardH - 16;
+    this._drawBrandCard(ctx, brandX, brandY, cardW, cardH);
+
     cvs.toBlob(function(blob) {
       var link = document.createElement('a');
       link.download = 'pixel-art-full-' + Date.now() + '.png';

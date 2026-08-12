@@ -237,6 +237,85 @@
         .import-slider-row input[type="range"] { flex: 1; }
         .import-slider-row span { font-size: 0.8rem; font-weight: 600; min-width: 30px; text-align: right; }
 
+        /* 导入效果切换 */
+        .import-effect-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 8px 0;
+        }
+        .import-effect-row > span { font-size: 0.8rem; font-weight: 600; }
+        .effect-toggle {
+            flex: 1;
+            display: flex;
+            gap: 4px;
+            background: #f0f0f5;
+            border-radius: 8px;
+            padding: 3px;
+        }
+        .effect-toggle .effect-btn {
+            flex: 1;
+            padding: 5px 4px;
+            border: none;
+            border-radius: 6px;
+            background: transparent;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-family: inherit;
+        }
+        .effect-toggle .effect-btn:hover { background: rgba(255,255,255,0.7); }
+        .effect-toggle .effect-btn.active {
+            background: var(--bg-gradient);
+            color: #fff;
+        }
+
+        /* 自动抠图进度条 */
+        .cutout-progress {
+            margin: 10px 0 2px;
+            background: #f0f0f5;
+            border-radius: 20px;
+            height: 18px;
+            position: relative;
+            overflow: hidden;
+        }
+        .cutout-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #F4A0B8, #8A6FE8);
+            border-radius: 20px;
+            transition: width 0.2s ease;
+        }
+        .cutout-progress-pct {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+            pointer-events: none;
+            line-height: 1;
+        }
+        .cutout-progress.error .cutout-progress-bar {
+            background: #E24B4A;
+        }
+        .cutout-progress-text {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            text-align: center;
+            min-height: 1em;
+        }
+        .cutout-progress.error ~ .cutout-progress-text {
+            color: #C0392B;
+        }
+
         /* 统计 */
         .stats-text { font-size: 0.82rem; color: var(--text-dark); line-height: 1.7; }
         .stats-text b { color: var(--primary-color); }
@@ -516,6 +595,7 @@
                     <button class="tool-btn active" data-tool="paint" id="paintTool">✏️ 涂色</button>
                     <button class="tool-btn" data-tool="eraser" id="eraserTool">🧹 擦除</button>
                     <button class="tool-btn" data-tool="fill" id="fillTool">🪣 填充</button>
+                    <button class="tool-btn" data-tool="move" id="moveTool">✋ 移动</button>
                     <button class="tool-btn active" id="labelToggleBtn">🔤 显示</button>
                 </div>
 
@@ -588,7 +668,20 @@
                         <input type="range" id="editorImportColors" min="2" max="291" value="48">
                         <span id="editorImportColorVal">16</span>
                     </div>
+                    <div class="import-effect-row">
+                        <span style="font-size:0.8rem">效果</span>
+                        <div class="effect-toggle" id="editorEffectToggle">
+                            <button type="button" class="effect-btn active" data-effect="standard">🟦 标准</button>
+                            <button type="button" class="effect-btn" data-effect="cartoon">🎨 卡通</button>
+                        </div>
+                    </div>
                     <button class="btn btn-primary" id="editorImportBtn" style="width:100%;font-size:0.82rem" disabled>⬆️ 导入并像素化</button>
+                    <!-- 自动抠图进度条 -->
+                    <div class="cutout-progress" id="cutoutProgress" style="display:none">
+                        <div class="cutout-progress-bar" id="cutoutProgressBar"></div>
+                        <span class="cutout-progress-pct" id="cutoutProgressPct">0%</span>
+                    </div>
+                    <span class="cutout-progress-text" id="cutoutProgressText"></span>
                 </div>
 
                 <!-- 统计信息（可折叠） -->
