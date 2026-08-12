@@ -112,6 +112,9 @@ class PixelEditor {
       this._fitCanvasToWrap();
     });
     this._resizeObserver.observe(this.canvasWrap);
+
+    // 页面空闲时静默预加载 AI 模型，用户使用卡通/抠图时秒开
+    this._scheduleModelPreload();
   }
 
   setupEventListeners() {
@@ -1289,10 +1292,10 @@ class PixelEditor {
     return () => clearInterval(timer);
   }
 
-  /** 带真实字节进度的模型下载（返回 ArrayBuffer），90s 超时防挂起 */
+  /** 带真实字节进度的模型下载（返回 ArrayBuffer），180s 超时防挂起（慢速网络留足时间） */
   async _fetchModel(url, onProgress) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 90000);
+    const timer = setTimeout(() => controller.abort(), 180000);
     try {
       const res = await fetch(url, { signal: controller.signal });
       if (!res.ok) throw new Error('模型下载失败 (' + res.status + ')');
@@ -1320,11 +1323,66 @@ class PixelEditor {
     }
   }
 
-  /** 加载并缓存 AnimeGANv2 推理会话（模型 8.2MB，首次加载走真实下载进度） */
+  /**
+   * 多源下载：依次尝试 URL 列表（本地优先，备用走 CDN 加速），
+   * 一个源失败/超时自动切下一个，全部失败抛最后一个错误
+   */
+  async _fetchModelAny(urls, onProgress) {
+    let lastErr = null;
+    for (const url of urls) {
+      try {
+        return await this._fetchModel(url, onProgress);
+      } catch (err) {
+        lastErr = err;
+        console.warn('模型源加载失败，尝试备用源:', url, err.message);
+      }
+    }
+    throw lastErr || new Error('所有模型源均不可用');
+  }
+
+  /** 空闲预加载 AI 模型（静默，后台下载到缓存，用户使用时免等待） */
+  _scheduleModelPreload() {
+    if (this._preloadScheduled) return;
+    this._preloadScheduled = true;
+    const start = () => {
+      if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(() => this._preloadModels(), { timeout: 8000 });
+      } else {
+        setTimeout(() => this._preloadModels(), 3000);
+      }
+    };
+    if (document.readyState === 'complete') {
+      start();
+    } else {
+      window.addEventListener('load', start, { once: true });
+    }
+  }
+
+  /** 静默下载两个本地模型到缓存（file:// 下 fetch 被 CORS 拦截则跳过；失败静默忽略） */
+  _preloadModels() {
+    if (location.protocol === 'file:') return;
+    if (this._preloadDone) return;
+    this._preloadDone = true;
+    // 并行：加载 onnxruntime 引擎 + 下载动漫/抠图模型到内存缓存
+    this._ensureOrt().catch(() => {});
+    Promise.allSettled([
+      this._fetchModel('models/anime-gan-v2.onnx')
+        .then(b => { this._animeGanBuf = b; })
+        .catch(() => {}),
+      this._fetchModel('models/u2netp.onnx')
+        .then(b => { this._u2netBuf = b; })
+        .catch(() => {})
+    ]);
+  }
+
+  /** 加载并缓存 AnimeGANv2 推理会话（模型 8.2MB，优先用预加载缓存，否则本地→CDN 下载） */
   _getAnimeGanSession(onProgress) {
     if (this._animeGanSession) return Promise.resolve(this._animeGanSession);
     return this._ensureOrt()
-      .then(() => this._fetchModel('models/anime-gan-v2.onnx', onProgress))
+      .then(() => this._animeGanBuf || this._fetchModelAny([
+        'models/anime-gan-v2.onnx',
+        'https://cdn.jsdelivr.net/gh/SmartBigBoy/PinDouWangGuo@main/models/anime-gan-v2.onnx'
+      ], onProgress))
       .then(buf => window.ort.InferenceSession.create(buf, { executionProviders: ['wasm'] }))
       .then(session => { this._animeGanSession = session; return session; });
   }
@@ -1432,10 +1490,13 @@ class PixelEditor {
       input[2*SIZE*SIZE + j] = d[i+2] / 255;
     }
 
-    // 模型下载（带真实进度）+ 会话缓存
+    // 模型下载（带真实进度，本地优先 + jsDelivr CDN 备用）+ 会话缓存
     if (!this._u2netSession) {
       if (!this._u2netBuf) {
-        this._u2netBuf = await this._fetchModel('models/u2netp.onnx', onModelProgress);
+        this._u2netBuf = await this._fetchModelAny([
+          'models/u2netp.onnx',
+          'https://cdn.jsdelivr.net/gh/SmartBigBoy/PinDouWangGuo@main/models/u2netp.onnx'
+        ], onModelProgress);
       }
       this._u2netSession = await window.ort.InferenceSession.create(this._u2netBuf, { executionProviders: ['wasm'] });
     }
