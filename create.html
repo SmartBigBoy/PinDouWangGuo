@@ -808,6 +808,88 @@
         }
         .crop-actions { display: flex; gap: 8px; }
         .crop-actions .btn { padding: 8px 14px; font-size: 0.85rem; }
+
+        /* ===== 数字人悬浮窗（豆豆） ===== */
+        .xmov-fab {
+            position: fixed;
+            right: 24px;
+            bottom: 24px;
+            width: 64px;
+            height: 64px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+            z-index: 9990;
+            overflow: hidden;
+            background: linear-gradient(135deg, #7C7FB3 0%, #9D9EC8 100%);
+            transition: all 0.2s ease;
+        }
+        .xmov-fab:hover { transform: scale(1.05); }
+        .xmov-fab.hidden { display: none; }
+        .xmov-fab img { width: 100%; height: 100%; object-fit: cover; }
+
+        .xmov-fab-tip {
+            position: fixed;
+            right: 24px;
+            bottom: 100px;
+            background: rgba(0, 0, 0, 0.78);
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            max-width: 280px;
+            display: none;
+            z-index: 9980;
+            line-height: 1.5;
+        }
+        .xmov-fab-tip.show { display: block; }
+
+        .xmov-window {
+            position: fixed;
+            right: 0;
+            bottom: 20px;
+            width: 437px;
+            max-width: 90vw;
+            display: none;
+            z-index: 9995;
+        }
+        .xmov-window.open { display: block; }
+
+        .xmov-container {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .xmov-hint {
+            text-align: center;
+            font-size: 0.8rem;
+            color: rgba(0, 0, 0, 0.55);
+            margin-top: 4px;
+            min-height: 20px;
+            pointer-events: none;
+        }
+
+        .xmov-close {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 24px;
+            height: 24px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.35);
+            color: #fff;
+            font-size: 0.8rem;
+            line-height: 1;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.15s;
+            z-index: 2;
+        }
+        .xmov-window:hover .xmov-close { opacity: 1; }
     </style>
 </head>
 <body class="create-page">
@@ -1003,8 +1085,234 @@
         </div>
     </div>
 
+    <!-- 数字人悬浮球（豆豆） -->
+    <button class="xmov-fab" id="xmovFab" title="打开数字人豆豆">
+        <img src="shuziren.jpeg" alt="豆豆">
+    </button>
+    <div class="xmov-fab-tip" id="xmovFabTip"></div>
+    <div class="xmov-window" id="xmovWindow">
+        <div class="xmov-container" id="xmovContainer"></div>
+        <button class="xmov-close" id="xmovClose" aria-label="关闭">✕</button>
+        <div class="xmov-hint" id="xmovHint">点击豆豆对话</div>
+    </div>
+
     <script src="colors.js"></script>
     <script src="create.js"></script>
     <script src="shared.js"></script>
+    <script src="https://media.xingyun3d.com/xingyun3d/general/litesdk/xmovAvatar@latest.js"></script>
+    <script>
+        // ===== 数字人豆豆（悬浮窗 + 语音对话） =====
+        (function () {
+            const fab = document.getElementById('xmovFab');
+            const fabTip = document.getElementById('xmovFabTip');
+            const win = document.getElementById('xmovWindow');
+            const container = document.getElementById('xmovContainer');
+            const closeBtn = document.getElementById('xmovClose');
+            const hint = document.getElementById('xmovHint');
+            const setHint = (t) => { hint.textContent = t; };
+
+            let avatar = null;
+            let initialized = false;
+            let listening = false;
+            let initFailed = false;   // 初始化失败（积分不足等）后，避免重复 init
+
+            function isWebGL2Supported() {
+                try {
+                    const c = document.createElement('canvas');
+                    return !!(c.getContext('webgl2'));
+                } catch (e) { return false; }
+            }
+
+            function xorDecode(encoded) {
+                const key = 'pindou-dou';
+                const bytes = atob(encoded);
+                let result = '';
+                for (let i = 0; i < bytes.length; i++) {
+                    result += String.fromCharCode(bytes.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+                }
+                return result;
+            }
+
+            function showFabTip(msg) {
+                fabTip.textContent = msg;
+                fabTip.classList.add('show');
+                clearTimeout(fabTip._timer);
+                fabTip._timer = setTimeout(() => fabTip.classList.remove('show'), 3500);
+            }
+
+            // 悬浮球 → 展开/收起
+            fab.addEventListener('click', () => {
+                if (!isWebGL2Supported()) {
+                    showFabTip('当前浏览器不支持 WebGL2，无法显示数字人，请更换 Chrome/Edge 浏览器');
+                    return;
+                }
+                if (initFailed) {
+                    showFabTip('数字人积分不足，无法打开，请联系管理员充值后重试');
+                    return;
+                }
+                win.classList.add('open');
+                fab.classList.add('hidden');
+                if (!initialized) initAvatar();
+                else avatar.switchInvisibleMode();
+            });
+
+            closeBtn.addEventListener('click', () => {
+                win.classList.remove('open');
+                fab.classList.remove('hidden');
+                if (avatar && initialized) avatar.switchInvisibleMode();
+                stopListening();
+            });
+
+            function initAvatar() {
+                setHint('正在加载豆豆…');
+                avatar = new XmovAvatar({
+                    containerId: '#xmovContainer',
+                    appId: xorDecode('EwxYBlpFSwYKFkQLWlEOQE9RV0RIXltXDhNLUFYXSAo='),
+                    appSecret: xorDecode('QQ0NUQlHTgAKEEhfWlFfFEwGCUBEXA1dW0YaVlpARAw='),
+                    gatewayServer: 'https://nebula-agent.xingyun3d.com/user/v1/ttsa/session',
+                    onMessage(error) {
+                        console.error('SDK 错误:', error.code, error.message);
+                        // 初始化阶段错误（积分不足/会话失败），收起窗口 + 气泡提示
+                        if (!initialized) {
+                            const msg = error.message || '';
+                            if (/积分|额度|余额|quota|balance|credit|充值|insufficient/i.test(msg) || error.code === 10003) {
+                                initFailed = true;
+                                win.classList.remove('open');
+                                fab.classList.remove('hidden');
+                                showFabTip('数字人积分不足，无法打开，请联系管理员充值后重试');
+                                return;
+                            }
+                        }
+                        setHint('出错：' + error.message);
+                    },
+                    proxyWidget: {
+                        subtitle_on() {},
+                        subtitle_off() {},
+                    },
+                });
+                avatar.init({
+                    onDownloadProgress(progress) {
+                        if (progress >= 100) setHint('点击豆豆对话');
+                        else setHint('加载中… ' + progress + '%');
+                    },
+                }).then(() => {
+                    initialized = true;
+                    setHint('点击豆豆对话');
+                    avatar.speak('<speak>你好，我是你的小助手豆豆，点击我就可以和你聊天啦。</speak>', true, true, { emotion: 'happy' });
+                }).catch((err) => {
+                    console.error('初始化失败:', err);
+                    // 收起窗口 + 气泡提示（避免空白窗口）
+                    win.classList.remove('open');
+                    fab.classList.remove('hidden');
+                    const msg = (err && err.message) ? err.message : String(err);
+                    if (/积分|额度|余额|quota|balance|credit|充值|insufficient/i.test(msg)) {
+                        initFailed = true;
+                        showFabTip('数字人积分不足，无法打开，请联系管理员充值后重试');
+                    } else {
+                        showFabTip('数字人初始化失败：' + msg);
+                    }
+                });
+            }
+
+            // 语音识别
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            let recognition = null;
+            if (SpeechRecognition) {
+                recognition = new SpeechRecognition();
+                recognition.lang = 'zh-CN';
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.onresult = (e) => {
+                    const text = e.results[0][0].transcript;
+                    setHint('你说：' + text);
+                    reply(text);
+                };
+                recognition.onerror = (e) => {
+                    listening = false;
+                    if (e.error === 'not-allowed') setHint('麦克风权限被拒绝');
+                    else if (e.error === 'no-speech') setHint('没听到声音，再点一次试试');
+                    else setHint('识别出错：' + e.error);
+                };
+                recognition.onend = () => { listening = false; };
+            }
+
+            function startListening() {
+                if (!recognition) return;
+                if (listening) return;
+                listening = true;
+                setHint('正在听，请说话…');
+                recognition.start();
+            }
+            function stopListening() {
+                if (recognition && listening) { recognition.stop(); listening = false; }
+            }
+
+            container.addEventListener('click', () => {
+                if (!initialized) return;
+                startListening();
+            });
+
+            // DeepSeek LLM 对话
+            const history = [];
+            async function callLLM(userText) {
+                const res = await fetch('https://api.deepseek.com/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + xorDecode('AwJDVg1HTlxXTUdQW1daQRwCDRRCX1ZVXBAVUVhEQlteXVY='),
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat',
+                        messages: [
+                            { role: 'system', content: '你的名字叫"豆豆"，是"拼豆王国"网站的小助手，一个可爱的数字人。负责引导用户使用"拼豆王国"（一个免费在线拼豆图纸生成器，支持照片转像素画、抠图、动漫化、多品牌色卡匹配）。回答要求：简短口语化、适合语音播报、一句话到三句话、不要markdown、不要emoji、不要列表、不要特殊符号。' },
+                            ...history,
+                            { role: 'user', content: userText },
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 200,
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    const err = new Error(data.error ? data.error.message : ('HTTP ' + res.status));
+                    err.status = res.status;
+                    throw err;
+                }
+                if (data.choices && data.choices[0]) return data.choices[0].message.content;
+                throw new Error(data.error ? data.error.message : 'LLM 返回异常');
+            }
+
+            async function reply(text) {
+                setHint('思考中…');
+                try {
+                    const answer = await callLLM(text);
+                    history.push({ role: 'user', content: text });
+                    history.push({ role: 'assistant', content: answer });
+                    setHint('');
+                    if (avatar && initialized) {
+                        avatar.speak('<speak>' + answer + '</speak>', true, true, { emotion: 'happy' });
+                    }
+                } catch (err) {
+                    console.error('LLM 调用失败:', err);
+                    const msg = (err && err.message) ? err.message : String(err);
+                    if ((err && err.status === 402) || /余额|insufficient|balance|quota|费用|credit/i.test(msg)) {
+                        setHint('大模型费用不足');
+                        if (avatar && initialized) {
+                            avatar.speak('<speak>抱歉，我的智能大脑余额不足了，请联系管理员充值。</speak>', true, true);
+                        }
+                    } else {
+                        setHint('网络开小差了，再说一次试试');
+                        if (avatar && initialized) {
+                            avatar.speak('<speak>抱歉，我刚刚走神了，能再说一次吗？</speak>', true, true);
+                        }
+                    }
+                }
+            }
+
+            window.addEventListener('beforeunload', () => {
+                if (avatar) avatar.destroy('page_unload');
+            });
+        })();
+    </script>
 </body>
 </html>
