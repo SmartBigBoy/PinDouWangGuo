@@ -69,7 +69,6 @@ class PixelEditor {
     this.importColorsSlider = document.getElementById('editorImportColors');
     this.importColorVal = document.getElementById('editorImportColorVal');
     this.importBtn = document.getElementById('editorImportBtn');
-    this.importEffect = 'standard';   // standard | cartoon
 
     this.statsEl = document.getElementById('editorStats');
     this.downloadBtn = document.getElementById('editorDownloadBtn');
@@ -101,6 +100,21 @@ class PixelEditor {
     this._cropSel = null;      // { left, top, width, height } 相对 stage 的显示坐标
     this._cropDragging = false;
     this._cropDragStart = null;
+
+    // 抠图边缘精修
+    this.refineModal = document.getElementById('refineModal');
+    this.refineStage = document.getElementById('refineStage');
+    this.refineCanvas = document.getElementById('refineCanvas');
+    this.refineCursor = document.getElementById('refineCursor');
+    this._refineData = null;   // { img, mask(Uint8ClampedArray), w, h } 原图 + 蒙版
+    this._refine = {
+      zoom: 1, tx: 0, ty: 0,
+      mode: 'erase',          // erase | restore | move
+      brushSize: 20,
+      drawing: false,
+      lastX: 0, lastY: 0,
+      history: null,          // 上一次涂画前的蒙版快照（撤销用）
+    };
 
     // 创建悬浮提示
     this._hoverTimer = null;
@@ -185,11 +199,10 @@ class PixelEditor {
     this.canvas.addEventListener('touchmove', (e) => { e.preventDefault(); this._onTouchMove(e); }, { passive: false });
     this.canvas.addEventListener('touchend', (e) => { e.preventDefault(); this._onTouchEnd(e); }, { passive: false });
 
-    // 滚轮缩放：乘法步进（幅度随 deltaY 平滑变化）+ 以鼠标为锚点
+    // 滚轮缩放：固定 5% 乘法步进，以鼠标为锚点
     this.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
-      const steps = Math.max(0.2, Math.min(3, Math.abs(e.deltaY) / 100));
-      const ratio = Math.pow(1.1, e.deltaY > 0 ? -steps : steps);
+      const ratio = e.deltaY > 0 ? 1 / 1.05 : 1.05;
       this._zoomByFactor(ratio, e.clientX, e.clientY);
     }, { passive: false });
 
@@ -202,8 +215,8 @@ class PixelEditor {
     const zoomIn = document.getElementById('createZoomIn');
     const zoomOut = document.getElementById('createZoomOut');
     const zoomReset = document.getElementById('createZoomBadge');
-    if (zoomIn) zoomIn.addEventListener('click', () => zoomAtCenter(1.25));
-    if (zoomOut) zoomOut.addEventListener('click', () => zoomAtCenter(1 / 1.25));
+    if (zoomIn) zoomIn.addEventListener('click', () => zoomAtCenter(1.05));
+    if (zoomOut) zoomOut.addEventListener('click', () => zoomAtCenter(1 / 1.05));
     if (zoomReset) zoomReset.addEventListener('click', () => this._resetZoom());
 
     // 上传图片
@@ -224,17 +237,6 @@ class PixelEditor {
     this.importColorsSlider.addEventListener('input', () => {
       this.importColorVal.textContent = this.importColorsSlider.value;
     });
-
-    // 导入效果切换（标准/卡通）
-    const effectToggle = document.getElementById('editorEffectToggle');
-    if (effectToggle) {
-      effectToggle.querySelectorAll('.effect-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          this.importEffect = btn.dataset.effect;
-          effectToggle.querySelectorAll('.effect-btn').forEach(b => b.classList.toggle('active', b === btn));
-        });
-      });
-    }
 
     // 导入按钮
     this.importBtn.addEventListener('click', () => this._applyImport());
@@ -264,6 +266,38 @@ class PixelEditor {
       });
     }
 
+    // 图片预览放大弹窗
+    const lb = document.getElementById('previewLightbox');
+    if (lb) {
+      document.getElementById('previewLightboxClose').addEventListener('click', () => this._closeLightbox());
+      document.getElementById('previewLightboxBackdrop').addEventListener('click', () => this._closeLightbox());
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && lb.style.display !== 'none') this._closeLightbox();
+      });
+    }
+
+    // 抠图边缘精修弹窗
+    if (this.refineModal) {
+      document.getElementById('refineClose').addEventListener('click', () => this._closeRefine());
+      document.getElementById('refineEraseBtn').addEventListener('click', () => this._refineSetMode('erase'));
+      document.getElementById('refineRestoreBtn').addEventListener('click', () => this._refineSetMode('restore'));
+      document.getElementById('refineMoveBtn').addEventListener('click', () => this._refineSetMode('move'));
+      document.getElementById('refineResetBtn').addEventListener('click', () => this._refineReset());
+      document.getElementById('refineUndoBtn').addEventListener('click', () => this._refineUndo());
+      document.getElementById('refineConfirmBtn').addEventListener('click', () => this._refineConfirm());
+      document.getElementById('refineBrushSize').addEventListener('input', (e) => {
+        this._refine.brushSize = parseInt(e.target.value, 10) || 20;
+        document.getElementById('refineBrushVal').textContent = this._refine.brushSize;
+      });
+      this.refineStage.addEventListener('pointerdown', (e) => this._refinePointerDown(e));
+      window.addEventListener('pointermove', (e) => this._refinePointerMove(e));
+      window.addEventListener('pointerup', () => this._refinePointerUp());
+      this.refineStage.addEventListener('wheel', (e) => this._refineWheel(e), { passive: false });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && this.refineModal.style.display !== 'none') this._closeRefine();
+      });
+    }
+
     // 可折叠面板
     if (this.importHeader) {
       this.importHeader.addEventListener('click', () => {
@@ -278,11 +312,14 @@ class PixelEditor {
       });
     }
 
-    // 键盘快捷键
+    // 键盘快捷键（输入框/下拉内不触发，避免误切换工具）
     document.addEventListener('keydown', (e) => {
+      const tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable)) return;
       if (e.key === 'p' || e.key === '1') this.setTool('paint');
       if (e.key === 'e' || e.key === '2') this.setTool('eraser');
       if (e.key === 'f' || e.key === '3') this.setTool('fill');
+      if (e.key === 'm' || e.key === '4') this.setTool('move');
     });
   }
 
@@ -380,7 +417,7 @@ class PixelEditor {
     this._baseCellSize = base;
     if (keepUserZoom && this._userZoomed) {
       // 保持用户当前格子大小不变，factor 反算（允许超过 [0.1,10] 范围）
-      this.cellSize = Math.max(4, Math.min(80, this.cellSize));
+      this.cellSize = Math.max(1, Math.min(80, this.cellSize));
       this._zoomFactor = this.cellSize / base;
     } else {
       this.cellSize = base;
@@ -413,7 +450,7 @@ class PixelEditor {
 
   // 从 _zoomFactor 应用缩放（不重绘，由调用方决定是否 render）
   _applyZoom() {
-    this.cellSize = Math.max(4, Math.min(80, Math.round(this._baseCellSize * this._zoomFactor)));
+    this.cellSize = Math.max(1, Math.min(80, this._baseCellSize * this._zoomFactor));
     this._applySize();
     this._updateZoomBadge();
   }
@@ -444,12 +481,9 @@ class PixelEditor {
     const engX = (apx - offsetX0) / s0 + 1;
     const engY = (apy - offsetY0) / s0 + 1;
 
-    // 应用新格子大小（舍入后若与当前相同，强制 ±1 步进，保证滚轮始终可缩放）
-    let newCS = Math.max(4, Math.min(80, Math.round(s0 * ratio)));
-    if (newCS === s0) {
-      newCS = Math.max(4, Math.min(80, s0 + (ratio > 1 ? 1 : -1)));
-    }
-    if (newCS === s0) return;
+    // 应用新格子大小（浮点连续，5% 乘法步进，视觉丝滑）
+    let newCS = Math.max(1, Math.min(80, s0 * ratio));
+    if (Math.abs(newCS - s0) < 1e-6) return;
     this._userZoomed = true;
     this.cellSize = newCS;
     this._zoomFactor = newCS / this._baseCellSize;
@@ -476,6 +510,16 @@ class PixelEditor {
   _updateZoomBadge() {
     const badge = document.getElementById('createZoomBadge');
     if (badge) badge.textContent = Math.round(this._zoomFactor * 100) + '%';
+  }
+
+  // 根据格子大小计算坐标轴数字的标注步长（缩小时自动稀疏，避免数字重叠）
+  _calcLabelStep(s) {
+    const minGap = 42;  // 相邻数字最小像素间距（容纳 3 位数字 + 留白）
+    const steps = [1, 5, 10, 20, 50, 100];
+    for (const st of steps) {
+      if (st * s >= minGap) return st;
+    }
+    return 100;
   }
 
   // ============ 工具 ============
@@ -671,34 +715,36 @@ class PixelEditor {
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < 10) return;
     const scale = dist / this._pinch.dist0;
-    // 舍入后若与当前相同，强制 ±1 步进，避免双指缩放卡住
-    let newCS = Math.max(4, Math.min(80, Math.round(this._pinch.cs0 * scale)));
-    if (newCS === this.cellSize) {
-      newCS = Math.max(4, Math.min(80, this.cellSize + (scale > 1 ? 1 : -1)));
-    }
-    if (newCS === this.cellSize) return;
+    // 浮点连续缩放，两指捏合丝滑
+    let newCS = Math.max(1, Math.min(80, this._pinch.cs0 * scale));
+    if (Math.abs(newCS - this.cellSize) < 1e-6) return;
 
-    // 锚点：两指中心，缩放前后该中心下的内容保持不动
+    // 锚点：两指中心，缩放前后该中心下的内容保持不动（用偏移补偿，与滚轮缩放一致）
     const midX = (t0.clientX + t1.clientX) / 2;
     const midY = (t0.clientY + t1.clientY) / 2;
-    const wrap = this.canvasWrap;
-    const oldW = this.canvas.width, oldH = this.canvas.height;
     const rect = this.canvas.getBoundingClientRect();
-    const contentX = (midX - rect.left) + wrap.scrollLeft;
-    const contentY = (midY - rect.top) + wrap.scrollTop;
+    const apx = midX - rect.left;
+    const apy = midY - rect.top;
+
+    const s0 = this.cellSize;
+    const W = this.gridWidth, H = this.gridHeight;
+    const cw = this.canvas.width, ch = this.canvas.height;
+    const offsetX0 = this._lastOffsetX != null ? this._lastOffsetX : (cw - W * s0) / 2;
+    const offsetY0 = this._lastOffsetY != null ? this._lastOffsetY : (ch - H * s0) / 2;
+    const engX = (apx - offsetX0) / s0 + 1;
+    const engY = (apy - offsetY0) / s0 + 1;
 
     this.cellSize = newCS;
     this._userZoomed = true;
     this._zoomFactor = this.cellSize / this._baseCellSize;
     this._applySize();
+
+    // 新偏移：让两指中心的工程坐标仍位于原屏幕位置
+    this._lastOffsetX = apx - (engX - 1) * newCS;
+    this._lastOffsetY = apy - (engY - 1) * newCS;
+
     this.render();
     this._updateZoomBadge();
-
-    const newRect = this.canvas.getBoundingClientRect();
-    const sX = this.canvas.width / oldW;
-    const sY = this.canvas.height / oldH;
-    wrap.scrollLeft = contentX * sX - (midX - newRect.left);
-    wrap.scrollTop = contentY * sY - (midY - newRect.top);
   }
 
   _onTouchEnd(e) {
@@ -760,11 +806,13 @@ class PixelEditor {
     if (x < 0 || x >= this.gridWidth || y < 0 || y >= this.gridHeight) return;
     const ctx = this.ctx;
     const s = this.cellSize;
-    const px = this._lastOffsetX + x * s;
-    const py = this._lastOffsetY + y * s;
+    const px0 = Math.round(this._lastOffsetX + x * s);
+    const py0 = Math.round(this._lastOffsetY + y * s);
+    const px1 = Math.round(this._lastOffsetX + (x + 1) * s);
+    const py1 = Math.round(this._lastOffsetY + (y + 1) * s);
     ctx.strokeStyle = '#ff0000';
     ctx.lineWidth = 2;
-    ctx.strokeRect(px + 1, py + 1, s - 2, s - 2);
+    ctx.strokeRect(px0 + 1, py0 + 1, (px1 - px0) - 2, (py1 - py0) - 2);
   }
 
   // ============ 渲染 ============
@@ -796,7 +844,7 @@ class PixelEditor {
     // 工程网格背景线
     ctx.lineWidth = 1;
     for (let ex = minEngX; ex <= maxEngX; ex++) {
-      const x = offsetX + (ex - 1) * s;
+      const x = Math.round(offsetX + (ex - 1) * s) + 0.5;
       ctx.strokeStyle = ex % 5 === 0 ? '#d0dceb' : '#eef2f9';
       ctx.beginPath();
       ctx.moveTo(x, 0);
@@ -804,7 +852,7 @@ class PixelEditor {
       ctx.stroke();
     }
     for (let ey = minEngY; ey <= maxEngY; ey++) {
-      const y = offsetY + (ey - 1) * s;
+      const y = Math.round(offsetY + (ey - 1) * s) + 0.5;
       ctx.strokeStyle = ey % 5 === 0 ? '#d0dceb' : '#eef2f9';
       ctx.beginPath();
       ctx.moveTo(0, y);
@@ -822,10 +870,13 @@ class PixelEditor {
       for (let x = minDataX; x <= maxDataX; x++) {
         const cell = this.gridData[y][x];
         if (!cell) continue;
-        const px = offsetX + x * s;
-        const py = offsetY + y * s;
+        // 格子边界对齐整数像素，浮点 cellSize 下保持像素画锐利（避免亚像素模糊）
+        const px0 = Math.round(offsetX + x * s);
+        const py0 = Math.round(offsetY + y * s);
+        const px1 = Math.round(offsetX + (x + 1) * s);
+        const py1 = Math.round(offsetY + (y + 1) * s);
         ctx.fillStyle = cell.hex;
-        ctx.fillRect(px, py, s, s);
+        ctx.fillRect(px0, py0, px1 - px0, py1 - py0);
         // 色号标签
         if (this._showCellLabels && s >= 11 && cell.name) {
           const fz = Math.max(6, Math.min(Math.floor(s * 0.35), 12));
@@ -839,13 +890,13 @@ class PixelEditor {
           ctx.fillStyle = lum > 0.5 ? '#000' : '#fff';
           ctx.shadowColor = lum > 0.5 ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.7)';
           ctx.shadowBlur = 3;
-          ctx.fillText(cell.name, px + s/2, py + s/2);
+          ctx.fillText(cell.name, (px0 + px1) / 2, (py0 + py1) / 2);
           ctx.shadowBlur = 0;
         }
       }
     }
 
-    // 坐标轴数字（步长 5，1-based 工程坐标）
+    // 坐标轴数字（动态步长：缩小时自动稀疏，避免重叠）
     const labelColor = '#667799';
     const labelFont = `bold ${Math.max(9, Math.min(12, Math.floor(s/2.5)))}px Arial, sans-serif`;
     ctx.font = labelFont;
@@ -853,11 +904,13 @@ class PixelEditor {
     ctx.textBaseline = 'middle';
     ctx.fillStyle = labelColor;
 
+    const labelStep = this._calcLabelStep(s);
+
     // 顶部坐标轴（y 轴负方向）
     const topY = Math.max(12, offsetY - 10);
     for (let ex = minEngX; ex <= maxEngX; ex++) {
-      if (ex % 5 !== 0) continue;
-      const x = offsetX + (ex - 1) * s + s / 2;
+      if (ex % labelStep !== 0) continue;
+      const x = Math.round(offsetX + (ex - 1) * s + s / 2);
       if (x < 10 || x > cw - 10) continue;
       ctx.fillText(String(ex), x, topY);
     }
@@ -866,8 +919,8 @@ class PixelEditor {
     const leftX = Math.max(12, offsetX - 10);
     ctx.textAlign = 'right';
     for (let ey = minEngY; ey <= maxEngY; ey++) {
-      if (ey % 5 !== 0) continue;
-      const y = offsetY + (ey - 1) * s + s / 2;
+      if (ey % labelStep !== 0) continue;
+      const y = Math.round(offsetY + (ey - 1) * s + s / 2);
       if (y < 10 || y > ch - 10) continue;
       ctx.fillText(String(ey), leftX, y);
     }
@@ -875,7 +928,8 @@ class PixelEditor {
     // 图案红色边界框
     ctx.strokeStyle = '#ff4d4f';
     ctx.lineWidth = 2;
-    ctx.strokeRect(offsetX, offsetY, W * s, H * s);
+    const bx0 = Math.round(offsetX), by0 = Math.round(offsetY);
+    ctx.strokeRect(bx0, by0, Math.round(offsetX + W * s) - bx0, Math.round(offsetY + H * s) - by0);
   }
 
   // ============ 色板 ============
@@ -941,6 +995,7 @@ class PixelEditor {
       const img = new Image();
       img.onload = () => {
         this.importedImageData = { img, dataURL: e.target.result };
+        this._refineData = null;  // 换图后旧蒙版失效，清除精修入口
         this.importBtn.disabled = false;
         this._updateThumbnail(e.target.result);
         showToast('图片已加载，可裁剪后导入');
@@ -950,7 +1005,27 @@ class PixelEditor {
     reader.readAsDataURL(file);
   }
 
-  /** 在导入区显示缩略图 + 裁剪/重新选择按钮 */
+  /** 打开图片预览放大弹窗 */
+  _openLightbox(url) {
+    if (!this._lightbox) {
+      this._lightbox = document.getElementById('previewLightbox');
+      this._lightboxImg = document.getElementById('previewLightboxImg');
+    }
+    if (!this._lightbox) return;
+    this._lightboxImg.src = url;
+    this._lightbox.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  /** 关闭图片预览放大弹窗 */
+  _closeLightbox() {
+    if (this._lightbox) {
+      this._lightbox.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+  }
+
+  /** 在导入区显示缩略图 + 裁剪/自动抠图/镜像/重新选择按钮 */
   _updateThumbnail(dataURL, cropped) {
     const area = this.uploadArea;
     area.innerHTML = '';
@@ -962,7 +1037,10 @@ class PixelEditor {
     thumb.style.borderRadius = '6px';
     thumb.style.display = 'block';
     thumb.style.margin = '0 auto';
+    thumb.style.cursor = 'zoom-in';
     thumb.alt = '上传预览';
+    thumb.title = '点击放大查看';
+    thumb.addEventListener('click', (e) => { e.stopPropagation(); this._openLightbox(dataURL); });
     area.appendChild(thumb);
 
     const actions = document.createElement('div');
@@ -987,6 +1065,14 @@ class PixelEditor {
     actions.appendChild(cutoutBtn);
     actions.appendChild(mirrorBtn);
     actions.appendChild(reselectBtn);
+
+    // 抠图后显示「边缘精修」入口
+    if (this._refineData) {
+      const refineBtn = makeBtn('🧹 边缘精修', () => this._openRefine());
+      refineBtn.style.gridColumn = '1 / -1';
+      actions.appendChild(refineBtn);
+    }
+
     area.appendChild(actions);
     if (cropped) showToast('已裁剪，可导入像素化');
   }
@@ -1009,6 +1095,7 @@ class PixelEditor {
     const newImg = new Image();
     newImg.onload = () => {
       this.importedImageData = { img: newImg, dataURL: url };
+      this._refineData = null;  // 镜像后旧蒙版失效，清除精修入口
       this._updateThumbnail(url);
       // 画布已有图案时自动按镜像后的图片重新像素化，保持画布与图片一致
       const hasArt = this.gridData.length && this.gridData.some(row => row.some(cell => cell !== null));
@@ -1142,8 +1229,12 @@ class PixelEditor {
     const scaleY = img.naturalHeight / img.clientHeight;
     const sw = Math.max(1, Math.round(s.width * scaleX));
     const sh = Math.max(1, Math.round(s.height * scaleY));
-    const sx = Math.max(0, Math.min(img.naturalWidth - sw, Math.round(s.left * scaleX)));
-    const sy = Math.max(0, Math.min(img.naturalHeight - sh, Math.round(s.top * scaleY)));
+    // 选区坐标 s.left/top 是相对裁剪舞台的，需先减去图片在舞台中的显示偏移，换算成图片内像素坐标
+    const dispRect = this._getImageDisplayRect();
+    const offX = dispRect ? dispRect.left : 0;
+    const offY = dispRect ? dispRect.top : 0;
+    const sx = Math.max(0, Math.min(img.naturalWidth - sw, Math.round((s.left - offX) * scaleX)));
+    const sy = Math.max(0, Math.min(img.naturalHeight - sh, Math.round((s.top - offY) * scaleY)));
 
     const cvs = document.createElement('canvas');
     cvs.width = sw;
@@ -1156,6 +1247,7 @@ class PixelEditor {
     const newImg = new Image();
     newImg.onload = () => {
       this.importedImageData = { img: newImg, dataURL: croppedURL };
+      this._refineData = null;  // 裁剪后旧蒙版失效，清除精修入口
       this._updateThumbnail(croppedURL, true);
       this._closeCrop();
     };
@@ -1358,90 +1450,16 @@ class PixelEditor {
     }
   }
 
-  /** 静默下载两个本地模型到缓存（file:// 下 fetch 被 CORS 拦截则跳过；失败静默忽略） */
+  /** 静默下载抠图模型到缓存（file:// 下 fetch 被 CORS 拦截则跳过；失败静默忽略） */
   _preloadModels() {
     if (location.protocol === 'file:') return;
     if (this._preloadDone) return;
     this._preloadDone = true;
-    // 并行：加载 onnxruntime 引擎 + 下载动漫/抠图模型到内存缓存
+    // 加载 onnxruntime 引擎 + 下载抠图模型到内存缓存
     this._ensureOrt().catch(() => {});
-    Promise.allSettled([
-      this._fetchModel('models/anime-gan-v2.onnx')
-        .then(b => { this._animeGanBuf = b; })
-        .catch(() => {}),
-      this._fetchModel('models/u2netp.onnx')
-        .then(b => { this._u2netBuf = b; })
-        .catch(() => {})
-    ]);
-  }
-
-  /** 加载并缓存 AnimeGANv2 推理会话（模型 8.2MB，优先用预加载缓存，否则本地→CDN 下载） */
-  _getAnimeGanSession(onProgress) {
-    if (this._animeGanSession) return Promise.resolve(this._animeGanSession);
-    return this._ensureOrt()
-      .then(() => this._animeGanBuf || this._fetchModelAny([
-        'models/anime-gan-v2.onnx',
-        'https://cdn.jsdelivr.net/gh/SmartBigBoy/PinDouWangGuo@main/models/anime-gan-v2.onnx'
-      ], onProgress))
-      .then(buf => window.ort.InferenceSession.create(buf, { executionProviders: ['wasm'] }))
-      .then(session => { this._animeGanSession = session; return session; });
-  }
-
-  /**
-   * AnimeGANv2 动漫化：输入原图 → 白底居中缩放到 512×512 → 推理 →
-   * 裁剪回内容区（保持原图宽高比），返回 canvas
-   */
-  async _cartoonize(img, onProgress) {
-    const session = await this._getAnimeGanSession(onProgress);
-    const SIZE = 512;
-    const srcW = img.naturalWidth, srcH = img.naturalHeight;
-    if (!srcW || !srcH) throw new Error('图片尺寸无效');
-    const scale = Math.min(SIZE / srcW, SIZE / srcH);
-    const dw = Math.max(1, Math.round(srcW * scale));
-    const dh = Math.max(1, Math.round(srcH * scale));
-    const ox = Math.floor((SIZE - dw) / 2);
-    const oy = Math.floor((SIZE - dh) / 2);
-
-    // 预处理：白底居中 → CHW [-1,1] float32
-    const c = document.createElement('canvas');
-    c.width = SIZE;
-    c.height = SIZE;
-    const cx = c.getContext('2d');
-    cx.fillStyle = '#ffffff';
-    cx.fillRect(0, 0, SIZE, SIZE);
-    cx.imageSmoothingEnabled = true;
-    cx.drawImage(img, ox, oy, dw, dh);
-    const d = cx.getImageData(0, 0, SIZE, SIZE).data;
-    const input = new Float32Array(3 * SIZE * SIZE);
-    for (let i = 0, j = 0; i < d.length; i += 4, j++) {
-      input[j]                = (d[i] / 255) * 2 - 1;
-      input[SIZE*SIZE + j]    = (d[i+1] / 255) * 2 - 1;
-      input[2*SIZE*SIZE + j]  = (d[i+2] / 255) * 2 - 1;
-    }
-
-    // 推理
-    const results = await session.run({ 'input.1': new window.ort.Tensor('float32', input, [1, 3, SIZE, SIZE]) });
-    const outKey = results['940'] ? '940' : Object.keys(results)[0];
-    const out = results[outKey].data;
-
-    // 后处理：反归一化 → 裁剪内容区（保持原宽高比，避免白色填充边进入图纸）
-    const outC = document.createElement('canvas');
-    outC.width = dw;
-    outC.height = dh;
-    const outCtx = outC.getContext('2d');
-    const imgData = outCtx.createImageData(dw, dh);
-    for (let y = 0; y < dh; y++) {
-      for (let x = 0; x < dw; x++) {
-        const si = ((y + oy) * SIZE + (x + ox)) * 3;
-        const di = (y * dw + x) * 4;
-        imgData.data[di]   = Math.max(0, Math.min(255, Math.round((out[si] * 0.5 + 0.5) * 255)));
-        imgData.data[di+1] = Math.max(0, Math.min(255, Math.round((out[si+1] * 0.5 + 0.5) * 255)));
-        imgData.data[di+2] = Math.max(0, Math.min(255, Math.round((out[si+2] * 0.5 + 0.5) * 255)));
-        imgData.data[di+3] = 255;
-      }
-    }
-    outCtx.putImageData(imgData, 0, 0);
-    return outC;
+    this._fetchModel('models/u2netp.onnx')
+      .then(b => { this._u2netBuf = b; })
+      .catch(() => {});
   }
 
   /** MediaPipe 人像分割：返回 {w,h,data:RGBA} 蒙版 */
@@ -1543,6 +1561,21 @@ class PixelEditor {
 
   /** 应用蒙版：背景透明化并替换当前待导入图片（返回 Promise，完成时更新进度） */
   _applyCutout(img, mask, label) {
+    // 保存精修数据（原图 + 单通道 alpha 蒙版），供「边缘精修」使用
+    // 注意：mask.data 是 RGBA（每像素 4 字节），这里提取 alpha 通道为单通道数组，
+    // 精修画笔/合成图按单通道索引读写（长度 w*h）
+    const rw = img.naturalWidth, rh = img.naturalHeight;
+    const rn = rw * rh;
+    const alphaMask = new Uint8ClampedArray(rn);
+    const srcMd = mask.data;
+    for (let i = 0; i < rn; i++) alphaMask[i] = srcMd[i * 4 + 3];
+    this._refineData = {
+      img: img,
+      mask: alphaMask,                          // 当前可编辑蒙版（单通道 alpha）
+      origMask: new Uint8ClampedArray(alphaMask), // 原始蒙版（重置用）
+      w: rw,
+      h: rh,
+    };
     return new Promise((resolve) => {
       const c = document.createElement('canvas');
       c.width = img.naturalWidth;
@@ -1569,66 +1602,297 @@ class PixelEditor {
     });
   }
 
-  async _applyImport(auto, toastText) {
-    if (!this.importedImageData) return;
-    let img = this.importedImageData.img;
-    const colorCount = parseInt(this.importColorsSlider.value);
-    const w = this.gridWidth;
-    const h = this.gridHeight;
-    const isCartoon = this.importEffect === 'cartoon';
+  // ============ 抠图边缘精修 ============
 
-    // 卡通：先 AnimeGANv2 动漫化（真动漫风：大色块 + 深描边 + 高饱和），模型不可用则降级传统卡通
-    if (isCartoon) {
-      try {
-        this._setCutoutProgress(2, '正在加载动漫模型…');
-        img = await this._cartoonize(img, (p) => {
-          this._setCutoutProgress(5 + Math.round(p * 85), '加载动漫模型 ' + Math.round(p * 100) + '%');
-        });
-        this._finishCutout('动漫化完成，正在像素化…');
-      } catch (err) {
-        console.error('AnimeGANv2 不可用，降级传统卡通:', err);
-        this._setCutoutProgress(100, '动漫模型加载失败，已用传统卡通效果', true);
+  /** 打开精修弹窗 */
+  _openRefine() {
+    if (!this._refineData) return;
+    const d = this._refineData;
+    const r = this._refine;
+    r.mode = 'erase';
+    r.brushSize = parseInt(document.getElementById('refineBrushSize').value) || 20;
+
+    // 初始自适应：图片居中适应弹窗（不放大超过原尺寸）
+    const stageW = this.refineStage.clientWidth;
+    const stageH = this.refineStage.clientHeight;
+    const fit = Math.min(stageW / d.w, stageH / d.h, 1);
+    r.zoom = fit || 1;
+    r.tx = (stageW - d.w * r.zoom) / 2;
+    r.ty = (stageH - d.h * r.zoom) / 2;
+
+    this.refineCanvas.width = d.w;
+    this.refineCanvas.height = d.h;
+    if (!this._refineComposite) this._refineComposite = document.createElement('canvas');
+    this._refineComposite.width = d.w;
+    this._refineComposite.height = d.h;
+    this._updateRefineComposite();
+    this._renderRefine();
+    this._syncRefineUI();
+
+    // 初始为画笔模式：隐藏系统光标，圆形光标等鼠标进入后显示
+    this.refineCanvas.style.cursor = 'none';
+    if (this.refineCursor) this.refineCursor.style.display = 'none';
+    this._refine.history = null;
+
+    this.refineModal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  /** 生成合成图：原图 RGB + 当前蒙版 alpha（被抠除区域透明，透出纯白背景） */
+  _updateRefineComposite() {
+    const d = this._refineData;
+    if (!d || !this._refineComposite) return;
+    const cctx = this._refineComposite.getContext('2d');
+    cctx.clearRect(0, 0, d.w, d.h);
+    cctx.drawImage(d.img, 0, 0);
+    const idata = cctx.getImageData(0, 0, d.w, d.h);
+    const px = idata.data;
+    const mask = d.mask;
+    for (let i = 0; i < mask.length; i++) {
+      px[i * 4 + 3] = Math.min(px[i * 4 + 3], mask[i]);
+    }
+    cctx.putImageData(idata, 0, 0);
+  }
+
+  /** 渲染：纯白背景（被抠除区域）+ 原图主体（蒙版 alpha 合成）+ 缩放平移 */
+  _renderRefine() {
+    const d = this._refineData;
+    if (!d) return;
+    const ctx = this.refineCanvas.getContext('2d');
+    ctx.clearRect(0, 0, d.w, d.h);
+    // 被抠除（透明）区域显示纯白，主体画原图，边界清晰
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, d.w, d.h);
+    if (this._refineComposite) ctx.drawImage(this._refineComposite, 0, 0);
+    const r = this._refine;
+    this.refineCanvas.style.transform = `translate(${r.tx}px, ${r.ty}px) scale(${r.zoom})`;
+  }
+
+  /** 屏幕坐标 → canvas 像素坐标 */
+  _refineScreenToCanvas(sx, sy) {
+    const rect = this.refineStage.getBoundingClientRect();
+    const r = this._refine;
+    return {
+      x: (sx - rect.left - r.tx) / r.zoom,
+      y: (sy - rect.top - r.ty) / r.zoom,
+    };
+  }
+
+  /** 更新圆形画笔光标：跟随鼠标，直径 = 刷子大小 × 缩放 */
+  _updateRefineCursor(e) {
+    if (!this.refineCursor) return;
+    const r = this._refine;
+    if (r.mode === 'move') {
+      this.refineCursor.style.display = 'none';
+      return;
+    }
+    const rect = this.refineStage.getBoundingClientRect();
+    const lx = e.clientX - rect.left;
+    const ly = e.clientY - rect.top;
+    // 鼠标移出 stage（如到工具栏）时隐藏光标
+    if (lx < 0 || ly < 0 || lx > rect.width || ly > rect.height) {
+      this.refineCursor.style.display = 'none';
+      return;
+    }
+    const dia = Math.max(6, r.brushSize * 2 * r.zoom);
+    this.refineCursor.style.width = dia + 'px';
+    this.refineCursor.style.height = dia + 'px';
+    this.refineCursor.style.left = lx + 'px';
+    this.refineCursor.style.top = ly + 'px';
+    this.refineCursor.style.display = 'block';
+  }
+
+  _refinePointerDown(e) {
+    const d = this._refineData;
+    if (!d) return;
+    const r = this._refine;
+    r.drawing = true;
+    if (this.refineStage.setPointerCapture) this.refineStage.setPointerCapture(e.pointerId);
+    const { x, y } = this._refineScreenToCanvas(e.clientX, e.clientY);
+    r.lastX = x; r.lastY = y;
+    if (r.mode === 'move') {
+      r._panStart = { sx: e.clientX, sy: e.clientY, tx: r.tx, ty: r.ty };
+      this.refineCanvas.style.cursor = 'grabbing';
+      if (this.refineCursor) this.refineCursor.style.display = 'none';
+      return;
+    }
+    // 画笔落笔前保存蒙版快照，供「撤销」恢复
+    r.history = new Uint8ClampedArray(d.mask);
+    this._refinePaintLine(x, y, x, y);
+    this._updateRefineComposite();
+    this._renderRefine();
+  }
+
+  _refinePointerMove(e) {
+    const d = this._refineData;
+    if (!d) return;
+    const r = this._refine;
+    // 更新圆形光标位置（画笔模式，实时跟随鼠标）
+    this._updateRefineCursor(e);
+    if (!r.drawing) return;
+    if (r.mode === 'move') {
+      r.tx = r._panStart.tx + (e.clientX - r._panStart.sx);
+      r.ty = r._panStart.ty + (e.clientY - r._panStart.sy);
+      this._renderRefine();
+      return;
+    }
+    const { x, y } = this._refineScreenToCanvas(e.clientX, e.clientY);
+    this._refinePaintLine(r.lastX, r.lastY, x, y);
+    r.lastX = x; r.lastY = y;
+    this._updateRefineComposite();
+    this._renderRefine();
+  }
+
+  _refinePointerUp() {
+    this._refine.drawing = false;
+    // 松开后恢复当前模式光标（画笔模式无系统光标、移动模式抓取）
+    this.refineCanvas.style.cursor = this._refine.mode === 'move' ? 'grab' : 'none';
+  }
+
+  /** 从 (x0,y0) 到 (x1,y1) 插值画线，避免快速拖动断线 */
+  _refinePaintLine(x0, y0, x1, y1) {
+    const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0)));
+    for (let i = 0; i <= steps; i++) {
+      const t = steps === 0 ? 0 : i / steps;
+      this._refinePaint(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t);
+    }
+  }
+
+  /** 在蒙版上涂一个圆形硬刷（erase 朝 0、restore 朝 255，无羽化，擦得干净） */
+  _refinePaint(cx, cy) {
+    const d = this._refineData;
+    const r = this._refine;
+    const mask = d.mask;
+    const radius = r.brushSize;
+    const erase = r.mode === 'erase';
+    const v = erase ? 0 : 255;
+    const x0 = Math.max(0, Math.floor(cx - radius));
+    const x1 = Math.min(d.w - 1, Math.ceil(cx + radius));
+    const y0 = Math.max(0, Math.floor(cy - radius));
+    const y1 = Math.min(d.h - 1, Math.ceil(cy + radius));
+    const r2 = radius * radius;
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const dx = x - cx, dy = y - cy;
+        if (dx * dx + dy * dy > r2) continue;
+        const idx = y * d.w + x;
+        if (erase) { if (v < mask[idx]) mask[idx] = v; }
+        else { if (v > mask[idx]) mask[idx] = v; }
       }
     }
+  }
 
-    // 缩放到网格尺寸（标准=最近邻硬边；卡通=平滑缩放保留细节）
+  /** 滚轮锚点缩放 */
+  _refineWheel(e) {
+    e.preventDefault();
+    const d = this._refineData;
+    if (!d) return;
+    const r = this._refine;
+    const rect = this.refineStage.getBoundingClientRect();
+    const sx = e.clientX - rect.left;
+    const sy = e.clientY - rect.top;
+    const mx = (sx - r.tx) / r.zoom;
+    const my = (sy - r.ty) / r.zoom;
+    const ratio = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+    r.zoom = Math.max(0.5, Math.min(24, r.zoom * ratio));
+    r.tx = sx - mx * r.zoom;
+    r.ty = sy - my * r.zoom;
+    this._renderRefine();
+  }
+
+  /** 重置蒙版到抠图原始结果 */
+  _refineReset() {
+    const d = this._refineData;
+    if (!d) return;
+    d.mask.set(d.origMask);
+    this._refine.history = null;
+    this._updateRefineComposite();
+    this._renderRefine();
+  }
+
+  /** 撤销：恢复上一次画笔操作前的蒙版快照 */
+  _refineUndo() {
+    const d = this._refineData;
+    const r = this._refine;
+    if (!d || !r.history) { showToast('没有可撤销的操作'); return; }
+    d.mask.set(r.history);
+    r.history = null;
+    this._updateRefineComposite();
+    this._renderRefine();
+    showToast('已撤销上次擦除');
+  }
+
+  /** 同步工具栏按钮/刷子 UI */
+  _syncRefineUI() {
+    const r = this._refine;
+    const map = { erase: 'refineEraseBtn', restore: 'refineRestoreBtn', move: 'refineMoveBtn' };
+    for (const m in map) {
+      const el = document.getElementById(map[m]);
+      if (el) el.classList.toggle('active', m === r.mode);
+    }
+    const brushSize = document.getElementById('refineBrushSize');
+    if (brushSize) brushSize.value = r.brushSize;
+    const brushVal = document.getElementById('refineBrushVal');
+    if (brushVal) brushVal.textContent = r.brushSize;
+  }
+
+  _refineSetMode(mode) {
+    this._refine.mode = mode;
+    // 画笔模式隐藏系统光标，改用圆形指示器；移动模式恢复抓取光标
+    this.refineCanvas.style.cursor = mode === 'move' ? 'grab' : 'none';
+    if (mode === 'move' && this.refineCursor) this.refineCursor.style.display = 'none';
+    this._syncRefineUI();
+  }
+
+  /** 完成精修：用精修后的蒙版重新生成透明图 */
+  _refineConfirm() {
+    const d = this._refineData;
+    if (!d) return;
+    // 单通道 alpha → RGBA（_applyCutout 读每 4 字节的第 4 个 alpha 值）
+    const rgba = new Uint8ClampedArray(d.w * d.h * 4);
+    for (let i = 0; i < d.mask.length; i++) rgba[i * 4 + 3] = d.mask[i];
+    const mask = { data: rgba, w: d.w, h: d.h };
+    this._applyCutout(d.img, mask, '主体').then(() => {
+      this._closeRefine();
+      this._finishCutout('完成！背景已透明');  // 让进度条走到 100% 并隐藏
+      showToast('🧹 边缘精修完成');
+    });
+  }
+
+  _closeRefine() {
+    this.refineModal.style.display = 'none';
+    document.body.style.overflow = '';
+    this._refine.drawing = false;
+    this.refineCanvas.style.cursor = '';
+    if (this.refineCursor) this.refineCursor.style.display = 'none';
+  }
+
+  _applyImport(auto, toastText) {
+    if (!this.importedImageData) return;
+    const img = this.importedImageData.img;
+    const w = this.gridWidth;
+    const h = this.gridHeight;
+
+    // 缩放到网格尺寸（最近邻硬边，保留像素化感）
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = w;
     tempCanvas.height = h;
     const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.imageSmoothingEnabled = isCartoon;
+    tempCtx.imageSmoothingEnabled = false;
     tempCtx.drawImage(img, 0, 0, w, h);
     const imageData = tempCtx.getImageData(0, 0, w, h);
     const pixels = imageData.data;
 
-    // 卡通：轻饱和度增强（AnimeGAN 输出本身已高饱和）
-    if (isCartoon) {
-      this._boostSaturation(pixels, w, h, 1.1);
-    }
-
-    // 提取颜色（复用 generator 的逻辑需要借助实例）
+    // 提取色卡
     const palettesFlat = {};
     for (const key in palettes) {
       palettesFlat[key] = this._flattenPalette(key);
     }
     const selectedPalette = palettesFlat[this.paletteSelect.value] || palettesFlat['mard291'];
 
-    // 采样像素
-    const samples = [];
-    for (let i = 0; i < pixels.length; i += 4) {
-      const r = pixels[i], g = pixels[i+1], b = pixels[i+2], a = pixels[i+3];
-      if (a < 128) continue;
-      samples.push({ r, g, b });
-    }
-    if (samples.length === 0) { showToast('图片无效', 'error'); return; }
-
-    // K-means 聚类（简化版；卡通模式聚类数压得更狠，色块更大更动漫）
-    const effK = isCartoon ? Math.max(5, Math.round(colorCount * 0.4)) : colorCount;
-    const k = Math.min(effK, samples.length);
-    const clusters = this._simpleKMeans(samples, k);
     const usedHexes = new Set();
 
-    // 先把每个聚类映射到最近的豆色
+    // 逐像素匹配最近的豆色（Lab 感知距离）
     const grid = [];
     for (let y = 0; y < h; y++) {
       const row = [];
@@ -1655,18 +1919,7 @@ class PixelEditor {
 
     this.render();
     this.updateStats();
-    showToast(toastText || (auto ? '网格已调整，已自动重新像素化' : (isCartoon ? '卡通效果已生成，可逐格修改颜色' : '导入完成，可逐格修改颜色')));
-  }
-
-  /** 就地提升像素饱和度（factor>1 增强，动漫大色块感） */
-  _boostSaturation(pixels, w, h, factor) {
-    for (let i = 0; i < pixels.length; i += 4) {
-      const r = pixels[i], g = pixels[i+1], b = pixels[i+2];
-      const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-      pixels[i]   = Math.max(0, Math.min(255, Math.round(gray + (r - gray) * factor)));
-      pixels[i+1] = Math.max(0, Math.min(255, Math.round(gray + (g - gray) * factor)));
-      pixels[i+2] = Math.max(0, Math.min(255, Math.round(gray + (b - gray) * factor)));
-    }
+    showToast(toastText || (auto ? '网格已调整，已自动重新像素化' : '导入完成，可逐格修改颜色'));
   }
 
   _flattenPalette(brand) {
@@ -1679,50 +1932,45 @@ class PixelEditor {
     return colors;
   }
 
+  /** sRGB → Lab（D65），感知均匀色彩空间，用于色差匹配 */
+  _rgbToLab(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    r = r > 0.04045 ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+    g = g > 0.04045 ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+    b = b > 0.04045 ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+    const x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047;
+    const y = (r * 0.2126 + g * 0.7152 + b * 0.0722) / 1.00000;
+    const z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
+    const fx = x > 0.008856 ? Math.pow(x, 1 / 3) : (7.787 * x) + 16 / 116;
+    const fy = y > 0.008856 ? Math.pow(y, 1 / 3) : (7.787 * y) + 16 / 116;
+    const fz = z > 0.008856 ? Math.pow(z, 1 / 3) : (7.787 * z) + 16 / 116;
+    return { l: (116 * fy) - 16, a: 500 * (fx - fy), b: 200 * (fy - fz) };
+  }
+
+  /**
+   * 在色卡中找 Lab 感知距离最近的颜色。
+   * 用 Lab 而非 RGB 欧氏距离——RGB 距离在暗色区塌缩（暗色间距远小于亮色），
+   * 会导致匹配系统性偏向暗色豆（出图偏黑）；Lab 是感知均匀空间，匹配更贴合人眼。
+   */
   _findClosest(target, palette) {
+    if (!this._labCache) this._labCache = new Map();
+    const tl = this._rgbToLab(target.r, target.g, target.b);
     let closest = null, minDist = Infinity;
     for (const c of palette) {
-      const r = parseInt(c.hex.slice(1,3), 16);
-      const g = parseInt(c.hex.slice(3,5), 16);
-      const b = parseInt(c.hex.slice(5,7), 16);
-      // Lab 距离近似计算
-      const dr = target.r - r, dg = target.g - g, db = target.b - b;
-      const dist = dr*dr + dg*dg + db*db;
+      let lab = this._labCache.get(c.hex);
+      if (!lab) {
+        lab = this._rgbToLab(
+          parseInt(c.hex.slice(1, 3), 16),
+          parseInt(c.hex.slice(3, 5), 16),
+          parseInt(c.hex.slice(5, 7), 16)
+        );
+        this._labCache.set(c.hex, lab);
+      }
+      const dl = tl.l - lab.l, da = tl.a - lab.a, db = tl.b - lab.b;
+      const dist = dl * dl + da * da + db * db;
       if (dist < minDist) { minDist = dist; closest = c; }
     }
     return closest;
-  }
-
-  _simpleKMeans(points, k, maxIter = 15) {
-    if (points.length <= k) return points.map(p => [p]);
-    // 简单初始化：均匀选取
-    const step = Math.floor(points.length / k);
-    const centroids = [];
-    for (let i = 0; i < k; i++) centroids.push({ ...points[Math.min(i * step, points.length-1)] });
-
-    let clusters;
-    for (let iter = 0; iter < maxIter; iter++) {
-      clusters = Array.from({ length: k }, () => []);
-      for (const p of points) {
-        let minIdx = 0, minD = Infinity;
-        for (let i = 0; i < k; i++) {
-          const d = (p.r-centroids[i].r)**2 + (p.g-centroids[i].g)**2 + (p.b-centroids[i].b)**2;
-          if (d < minD) { minD = d; minIdx = i; }
-        }
-        clusters[minIdx].push(p);
-      }
-      let moved = false;
-      for (let i = 0; i < k; i++) {
-        if (clusters[i].length === 0) continue;
-        const avgR = Math.round(clusters[i].reduce((s,p) => s+p.r, 0) / clusters[i].length);
-        const avgG = Math.round(clusters[i].reduce((s,p) => s+p.g, 0) / clusters[i].length);
-        const avgB = Math.round(clusters[i].reduce((s,p) => s+p.b, 0) / clusters[i].length);
-        if (centroids[i].r !== avgR || centroids[i].g !== avgG || centroids[i].b !== avgB) moved = true;
-        centroids[i] = { r: avgR, g: avgG, b: avgB };
-      }
-      if (!moved) break;
-    }
-    return clusters.filter(c => c.length > 0);
   }
 
   // ============ 统计 ============
@@ -1901,7 +2149,7 @@ class PixelEditor {
     // ===== 主图尺寸（主图 + 图例整体居中于内容区） =====
     var availableMainWidth = T.w - cs - cardW - 60;
     var availableMainHeight = contentH - cs - 40;
-    var ps = Math.max(8, Math.min(Math.floor(availableMainWidth / W), Math.floor(availableMainHeight / H)));
+    var ps = Math.max(1, Math.min(Math.floor(availableMainWidth / W), Math.floor(availableMainHeight / H)));
     var mw = W * ps, mh = H * ps;
 
     var totalW = mw + cs + 40 + cardW;
@@ -1942,11 +2190,12 @@ class PixelEditor {
     var mx = Math.floor(W/2), my = Math.floor(H/2);
     ctx.beginPath(); ctx.moveTo(gx+cs+mx*ps,gy+cs); ctx.lineTo(gx+cs+mx*ps,gy+cs+mh); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(gx+cs,gy+cs+my*ps); ctx.lineTo(gx+cs+mw,gy+cs+my*ps); ctx.stroke();
-    var dense = Math.max(W,H) < 30, step = dense ? 1 : 5;
-    ctx.fillStyle = '#333'; ctx.font = 'bold 18px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    for (var x = 0; x < W; x++) { if ((x+1) % step === 0) ctx.fillText(x+1, gx+cs+x*ps+ps/2, gy+cs/2); }
+    var labelStep = this._calcLabelStep(ps);
+    var labelSize = Math.max(10, Math.min(18, Math.floor(ps * 1.2)));
+    ctx.fillStyle = '#333'; ctx.font = 'bold ' + labelSize + 'px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (var x = 0; x < W; x++) { if ((x+1) % labelStep === 0) ctx.fillText(x+1, gx+cs+x*ps+ps/2, gy+cs/2); }
     ctx.textAlign = 'right';
-    for (var y = 0; y < H; y++) { if ((y+1) % step === 0) ctx.fillText(y+1, gx+cs-8, gy+cs+y*ps+ps/2); }
+    for (var y = 0; y < H; y++) { if ((y+1) % labelStep === 0) ctx.fillText(y+1, gx+cs-8, gy+cs+y*ps+ps/2); }
 
     // ===== 右侧信息卡片（与生成器页一致） =====
     ctx.fillStyle = '#FBF7F8';

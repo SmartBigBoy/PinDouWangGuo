@@ -267,6 +267,16 @@ class PixelArtGenerator {
                 if (e.key === 'Escape' && this.cropModal.classList.contains('show')) this._closeCrop();
             });
         }
+
+        // 图片预览放大弹窗事件
+        const lb = document.getElementById('previewLightbox');
+        if (lb) {
+            document.getElementById('previewLightboxClose').addEventListener('click', () => this._closeLightbox());
+            document.getElementById('previewLightboxBackdrop').addEventListener('click', () => this._closeLightbox());
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && lb.classList.contains('show')) this._closeLightbox();
+            });
+        }
     }
 
     handleDragOver(e) {
@@ -320,12 +330,15 @@ class PixelArtGenerator {
         this.originalImageContainer.classList.add('has-image');
         // 保持容器高度原样（aspect-ratio:1 正方形），仅改为纵向排列让内容居中
         this.originalImageContainer.style.flexDirection = 'column';
-        // 显示缩略图 + 裁剪/重新选择按钮（内联样式覆盖 .image-replace-btn 默认的 display:none）
+        // 显示缩略图 + 裁剪/镜像/重新选择按钮（缩略图 flex:1 占满容器，按钮固定底部）
         this.originalImageContainer.innerHTML = `
-            <img src="${src}" alt="原图" style="display:block;max-width:100%;max-height:120px;margin:0 auto;border-radius:6px;">
+            <div style="flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;padding:10px;">
+                <img src="${src}" id="originalThumb" alt="原图" title="点击放大查看" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;cursor:zoom-in;">
+            </div>
             <input type="file" id="imageInput" accept="image/*" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.001; font-size: 0; cursor: pointer; z-index: 3;">
-            <div style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
+            <div style="flex-shrink:0;display:flex;gap:6px;padding:0 10px 10px;justify-content:center;">
                 <button id="cropOriginBtn" title="裁剪图片" style="display:inline-flex;align-items:center;gap:4px;position:static;padding:6px 12px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer;border:none;background:#f0f0f5;color:#333;">✂️ 裁剪</button>
+                <button id="mirrorOriginBtn" title="左右镜像" style="display:inline-flex;align-items:center;gap:4px;position:static;padding:6px 12px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer;border:none;background:#f0f0f5;color:#333;">🔄 镜像</button>
                 <button id="replaceImageBtn" title="更换图片" style="display:inline-flex;align-items:center;gap:4px;position:static;padding:6px 12px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer;border:none;background:rgba(0,0,0,0.72);color:#fff;">📷 重新选择</button>
             </div>`;
         // 重新获取引用并绑定事件
@@ -347,12 +360,73 @@ class PixelArtGenerator {
                 this._openCrop();
             });
         }
-        // 点击容器（非按钮区域）也可触发更换图片
+        const mirrorBtn = document.getElementById('mirrorOriginBtn');
+        if (mirrorBtn) {
+            mirrorBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this._mirrorImage();
+            });
+        }
+        // 缩略图点击 → 放大查看（不再触发重新上传）
+        const thumb = document.getElementById('originalThumb');
+        if (thumb) {
+            thumb.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this._openLightbox(src);
+            });
+        }
+        // 点击容器空白区域才触发更换图片
         this.originalImageContainer.onclick = (e) => {
-            if (e.target === this.originalImageContainer || e.target.tagName === 'IMG') {
+            if (e.target === this.originalImageContainer) {
                 this.imageInput.click();
             }
         };
+    }
+
+    /** 图片左右镜像（水平翻转）：更新原图 + 缩略图，并自动重新生成像素化 */
+    _mirrorImage() {
+        if (!this.originalImage) return;
+        const img = this.originalImage;
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        if (!w || !h) return;
+        const c = document.createElement('canvas');
+        c.width = w;
+        c.height = h;
+        const cx = c.getContext('2d');
+        cx.translate(w, 0);
+        cx.scale(-1, 1);
+        cx.drawImage(img, 0, 0);
+        const url = c.toDataURL('image/png');
+        const newImg = new Image();
+        newImg.onload = () => {
+            this.originalImage = newImg;
+            this.currentImageDataURL = url;
+            this.showOriginalImage(url);
+            this.scheduleAutoGenerate();
+            showToast('🔄 已左右镜像');
+        };
+        newImg.src = url;
+    }
+
+    /** 打开图片预览放大弹窗 */
+    _openLightbox(src) {
+        if (!this._lightbox) {
+            this._lightbox = document.getElementById('previewLightbox');
+            this._lightboxImg = document.getElementById('previewLightboxImg');
+        }
+        if (!this._lightbox) return;
+        this._lightboxImg.src = src;
+        this._lightbox.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    /** 关闭图片预览放大弹窗 */
+    _closeLightbox() {
+        if (this._lightbox) {
+            this._lightbox.classList.remove('show');
+            document.body.style.overflow = '';
+        }
     }
 
     getGridSize() {
@@ -2326,8 +2400,12 @@ class PixelArtGenerator {
         const scaleY = img.naturalHeight / img.clientHeight;
         const sw = Math.max(1, Math.round(s.width * scaleX));
         const sh = Math.max(1, Math.round(s.height * scaleY));
-        const sx = Math.max(0, Math.min(img.naturalWidth - sw, Math.round(s.left * scaleX)));
-        const sy = Math.max(0, Math.min(img.naturalHeight - sh, Math.round(s.top * scaleY)));
+        // 选区坐标 s.left/top 是相对裁剪舞台的，需先减去图片在舞台中的显示偏移，换算成图片内像素坐标
+        const dispRect = this._getImageDisplayRect();
+        const offX = dispRect ? dispRect.left : 0;
+        const offY = dispRect ? dispRect.top : 0;
+        const sx = Math.max(0, Math.min(img.naturalWidth - sw, Math.round((s.left - offX) * scaleX)));
+        const sy = Math.max(0, Math.min(img.naturalHeight - sh, Math.round((s.top - offY) * scaleY)));
 
         const cvs = document.createElement('canvas');
         cvs.width = sw;

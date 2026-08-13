@@ -261,6 +261,47 @@
         }
         .crop-actions { display: flex; gap: 8px; }
         .crop-actions .btn { padding: 8px 14px; font-size: 0.85rem; }
+
+        /* ===== 图片预览放大弹窗 ===== */
+        .lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 3000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .lightbox.show { display: flex; }
+        .lightbox-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.78);
+            cursor: zoom-out;
+        }
+        .lightbox-img {
+            position: relative;
+            max-width: 90vw;
+            max-height: 88vh;
+            border-radius: 10px;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+            background: #fff;
+        }
+        .lightbox-close {
+            position: absolute;
+            top: 18px;
+            right: 22px;
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.22);
+            color: #fff;
+            font-size: 1.1rem;
+            line-height: 1;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .lightbox-close:hover { background: rgba(255, 255, 255, 0.38); }
     </style>
 
     <!-- 社交分享图 -->
@@ -454,6 +495,7 @@
                                     <option value="64x64">64×64</option>
                                     <option value="87x58">87×58</option>
                                     <option value="104x104">104×104</option>
+                                    <option value="250x250">250×250</option>
                                     <option value="custom">自定义</option>
                                 </select>
                                 <span id="customGrid" style="display:none;">
@@ -614,6 +656,13 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- 图片预览放大弹窗 -->
+    <div class="lightbox" id="previewLightbox">
+        <div class="lightbox-backdrop" id="previewLightboxBackdrop"></div>
+        <img class="lightbox-img" id="previewLightboxImg" alt="预览大图">
+        <button class="lightbox-close" id="previewLightboxClose" aria-label="关闭">✕</button>
     </div>
 
     <script src="shared.js" defer></script>

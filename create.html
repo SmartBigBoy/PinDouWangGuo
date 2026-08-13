@@ -331,35 +331,6 @@
             background: rgba(124, 127, 179, 0.18);
         }
 
-        /* 效果切换 */
-        .effect-toggle {
-            flex: 1;
-            display: flex;
-            gap: 4px;
-            background: rgba(124, 127, 179, 0.12);
-            border-radius: 10px;
-            padding: 3px;
-        }
-        .effect-toggle .effect-btn {
-            flex: 1;
-            padding: 6px 4px;
-            border: none;
-            border-radius: 8px;
-            background: transparent;
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: var(--text-dark);
-            cursor: pointer;
-            transition: all 0.15s ease;
-            font-family: inherit;
-        }
-        .effect-toggle .effect-btn:hover { background: rgba(255,255,255,0.7); }
-        .effect-toggle .effect-btn.active {
-            background: var(--bg-gradient);
-            color: #fff;
-            box-shadow: 0 2px 8px rgba(124, 127, 179, 0.3);
-        }
-
         /* 自动抠图进度条 */
         .cutout-progress {
             margin: 10px 0 2px;
@@ -607,6 +578,150 @@
             .current-color-swatch { width: 26px; height: 26px; }
         }
 
+        /* ===== 图片预览放大弹窗 ===== */
+        .lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .lightbox-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.78);
+            cursor: zoom-out;
+        }
+        .lightbox-img {
+            position: relative;
+            max-width: 90vw;
+            max-height: 88vh;
+            border-radius: 10px;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+            background: #fff;
+        }
+        .lightbox-close {
+            position: absolute;
+            top: 18px;
+            right: 22px;
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.22);
+            color: #fff;
+            font-size: 1.1rem;
+            line-height: 1;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .lightbox-close:hover { background: rgba(255, 255, 255, 0.38); }
+
+        /* ===== 抠图边缘精修弹窗 ===== */
+        .refine-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 1100;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .refine-box {
+            background: #fff;
+            border-radius: 12px;
+            width: min(96vw, 900px);
+            max-height: 94vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+            overflow: hidden;
+        }
+        .refine-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .refine-tip { font-size: 0.75rem; color: var(--text-muted); font-weight: 400; margin-left: auto; }
+        .refine-close {
+            background: none;
+            border: none;
+            font-size: 1.1rem;
+            line-height: 1;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 4px 6px;
+            border-radius: 6px;
+        }
+        .refine-close:hover { background: rgba(0, 0, 0, 0.06); }
+        .refine-stage {
+            position: relative;
+            margin: 0 16px;
+            height: 55vh;
+            overflow: hidden;
+            background: #e8e8ee;
+            border-radius: 8px;
+            cursor: crosshair;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .refine-stage canvas {
+            position: absolute;
+            left: 0;
+            top: 0;
+            transform-origin: 0 0;
+        }
+        .refine-cursor {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 40px;
+            height: 40px;
+            border: 2px solid #7C7FB3;
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            display: none;
+            z-index: 5;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.85);
+        }
+        .refine-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-top: 1px solid var(--border-color);
+            flex-wrap: wrap;
+        }
+        .refine-tools { display: flex; gap: 6px; }
+        .refine-btn {
+            padding: 6px 12px;
+            border: 1.5px solid var(--border-color);
+            border-radius: 8px;
+            background: #fff;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .refine-btn.active {
+            background: var(--bg-gradient);
+            border-color: var(--primary-color);
+            color: #fff;
+        }
+        .refine-brush { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--text-dark); }
+        .refine-brush input[type="range"] { width: 100px; accent-color: var(--primary-color); }
+        .refine-brush span:last-child { font-weight: 700; color: var(--primary-color); min-width: 22px; text-align: right; }
+        .refine-actions { display: flex; gap: 8px; margin-left: auto; }
+        .refine-actions .btn { padding: 7px 14px; font-size: 0.82rem; }
+
         /* ===== 裁剪弹窗 ===== */
         .crop-modal {
             position: fixed;
@@ -735,6 +850,7 @@
                         <option value="64x64">64×64</option>
                         <option value="87x58">87×58</option>
                         <option value="104x104">104×104</option>
+                        <option value="250x250">250×250</option>
                         <option value="custom">自定义</option>
                     </select>
                     <select id="editorPalette">
@@ -794,13 +910,6 @@
                         <input type="range" id="editorImportColors" min="2" max="291" value="48">
                         <span class="param-value" id="editorImportColorVal">16</span>
                     </div>
-                    <div class="param-row">
-                        <span class="param-label">效果</span>
-                        <div class="effect-toggle" id="editorEffectToggle">
-                            <button type="button" class="effect-btn active" data-effect="standard">🟦 标准</button>
-                            <button type="button" class="effect-btn" data-effect="cartoon">🎨 卡通</button>
-                        </div>
-                    </div>
                     <button class="btn btn-primary btn-block" id="editorImportBtn" disabled>⬆️ 导入并像素化</button>
                     <!-- 自动抠图进度条 -->
                     <div class="cutout-progress" id="cutoutProgress" style="display:none">
@@ -850,6 +959,45 @@
                 <div class="crop-actions">
                     <button class="btn btn-secondary" id="cropReset">🔄 全选</button>
                     <button class="btn btn-primary" id="cropConfirm">✅ 确认裁剪</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图片预览放大弹窗 -->
+    <div class="lightbox" id="previewLightbox" style="display:none">
+        <div class="lightbox-backdrop" id="previewLightboxBackdrop"></div>
+        <img class="lightbox-img" id="previewLightboxImg" alt="预览大图">
+        <button class="lightbox-close" id="previewLightboxClose" aria-label="关闭">✕</button>
+    </div>
+
+    <!-- 抠图边缘精修弹窗 -->
+    <div class="refine-modal" id="refineModal" style="display:none">
+        <div class="refine-box">
+            <div class="refine-header">
+                <span>🧹 边缘精修</span>
+                <span class="refine-tip">白色=已抠除 · 滚轮缩放 · 拖动平移 · 画笔修边</span>
+                <button class="refine-close" id="refineClose" aria-label="关闭">✕</button>
+            </div>
+            <div class="refine-stage" id="refineStage">
+                <canvas id="refineCanvas"></canvas>
+                <div class="refine-cursor" id="refineCursor"></div>
+            </div>
+            <div class="refine-toolbar">
+                <div class="refine-tools">
+                    <button type="button" class="refine-btn active" id="refineEraseBtn">🧽 擦除</button>
+                    <button type="button" class="refine-btn" id="refineRestoreBtn">✏️ 恢复</button>
+                    <button type="button" class="refine-btn" id="refineMoveBtn">✋ 移动</button>
+                </div>
+                <div class="refine-brush">
+                    <span>刷子大小</span>
+                    <input type="range" id="refineBrushSize" min="4" max="80" value="20">
+                    <span id="refineBrushVal">20</span>
+                </div>
+                <div class="refine-actions">
+                    <button type="button" class="btn btn-secondary" id="refineUndoBtn">↩️ 撤销</button>
+                    <button type="button" class="btn btn-secondary" id="refineResetBtn">🔄 重置</button>
+                    <button type="button" class="btn btn-primary" id="refineConfirmBtn">✅ 完成</button>
                 </div>
             </div>
         </div>
