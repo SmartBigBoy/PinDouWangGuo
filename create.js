@@ -2,20 +2,6 @@
  * create.js — 拼豆王国 创作画板
  * 空白网格手绘 + 图片导入逐格修改
  */
-/** 轻提示（独立版，不依赖 script.js） */
-function showToast(message) {
-  let toast = document.getElementById('toast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'toast';
-    document.body.appendChild(toast);
-  }
-  toast.textContent = message;
-  toast.classList.add('show');
-  clearTimeout(toast._timer);
-  toast._timer = setTimeout(() => toast.classList.remove('show'), 2000);
-}
-
 class PixelEditor {
   constructor() {
     this.gridData = [];         // 2D: cell = { color: {hex,name} } | null
@@ -1932,21 +1918,6 @@ class PixelEditor {
     return colors;
   }
 
-  /** sRGB → Lab（D65），感知均匀色彩空间，用于色差匹配 */
-  _rgbToLab(r, g, b) {
-    r /= 255; g /= 255; b /= 255;
-    r = r > 0.04045 ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
-    g = g > 0.04045 ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
-    b = b > 0.04045 ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
-    const x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047;
-    const y = (r * 0.2126 + g * 0.7152 + b * 0.0722) / 1.00000;
-    const z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
-    const fx = x > 0.008856 ? Math.pow(x, 1 / 3) : (7.787 * x) + 16 / 116;
-    const fy = y > 0.008856 ? Math.pow(y, 1 / 3) : (7.787 * y) + 16 / 116;
-    const fz = z > 0.008856 ? Math.pow(z, 1 / 3) : (7.787 * z) + 16 / 116;
-    return { l: (116 * fy) - 16, a: 500 * (fx - fy), b: 200 * (fy - fz) };
-  }
-
   /**
    * 在色卡中找 Lab 感知距离最近的颜色。
    * 用 Lab 而非 RGB 欧氏距离——RGB 距离在暗色区塌缩（暗色间距远小于亮色），
@@ -1954,12 +1925,12 @@ class PixelEditor {
    */
   _findClosest(target, palette) {
     if (!this._labCache) this._labCache = new Map();
-    const tl = this._rgbToLab(target.r, target.g, target.b);
+    const tl = rgbToLab(target.r, target.g, target.b);
     let closest = null, minDist = Infinity;
     for (const c of palette) {
       let lab = this._labCache.get(c.hex);
       if (!lab) {
-        lab = this._rgbToLab(
+        lab = rgbToLab(
           parseInt(c.hex.slice(1, 3), 16),
           parseInt(c.hex.slice(3, 5), 16),
           parseInt(c.hex.slice(5, 7), 16)
@@ -2008,25 +1979,22 @@ class PixelEditor {
     this.statsEl.innerHTML = html;
   }
 
-  // 计算亮度用于文字对比
-  _lum(hex) {
-    const r = parseInt(hex.slice(1,3),16)/255;
-    const g = parseInt(hex.slice(3,5),16)/255;
-    const b = parseInt(hex.slice(5,7),16)/255;
-    return 0.299*r + 0.587*g + 0.114*b;
-  }
-
   _findColorName(hex) {
-    for (const brand in palettes) {
-      for (const s in palettes[brand].series) {
-        const colors = palettes[brand].series[s].colors;
-        if (colors) {
-          const found = colors.find(c => c.hex.toUpperCase() === hex.toUpperCase());
-          if (found) return found.name;
+    // 懒构建 hex→name 缓存，避免每次统计/下载都线性遍历全部色卡
+    if (!this._nameCache) {
+      this._nameCache = new Map();
+      for (const brand in palettes) {
+        for (const s in palettes[brand].series) {
+          const colors = palettes[brand].series[s].colors;
+          if (colors) {
+            for (const c of colors) {
+              this._nameCache.set(c.hex.toUpperCase(), c.name);
+            }
+          }
         }
       }
     }
-    return hex;
+    return this._nameCache.get(hex.toUpperCase()) || hex;
   }
 
 
@@ -2063,64 +2031,6 @@ class PixelEditor {
   }
 
   // ============ 下载 ============
-
-  /** 圆角矩形（填充） */
-  roundRect(ctx, x, y, width, height, radius) {
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + width - radius, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-    ctx.lineTo(x + width, y + height - radius);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    ctx.lineTo(x + radius, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  /** 绘制品牌引流卡片（与生成器页一致） */
-  _drawBrandCard(ctx, x, y, w, h) {
-    const iconSize = Math.round(h * 0.52);
-    const iconX = x + Math.round(w * 0.07);
-    const iconY = y + Math.round((h - iconSize) / 2);
-    const textX = iconX + iconSize + Math.round(w * 0.055);
-    const nameSize = Math.max(20, Math.round(h * 0.28));
-    const urlSize = Math.max(13, Math.round(h * 0.18));
-
-    ctx.save();
-    ctx.fillStyle = '#ffffff';
-    this.roundRect(ctx, x, y, w, h, Math.round(h * 0.13));
-    ctx.strokeStyle = '#F4A0B8';
-    ctx.lineWidth = Math.max(2, Math.round(h * 0.024));
-    ctx.stroke();
-
-    const grad = ctx.createLinearGradient(iconX, iconY, iconX + iconSize, iconY + iconSize);
-    grad.addColorStop(0, '#F4A0B8');
-    grad.addColorStop(1, '#8A6FE8');
-    ctx.fillStyle = grad;
-    this.roundRect(ctx, iconX, iconY, iconSize, iconSize, Math.round(iconSize * 0.22));
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(iconX + iconSize / 2, iconY + iconSize / 2, Math.round(iconSize * 0.2), 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.65)';
-    ctx.lineWidth = Math.max(2, Math.round(iconSize * 0.045));
-    ctx.beginPath();
-    ctx.arc(iconX + iconSize / 2, iconY + iconSize / 2, Math.round(iconSize * 0.36), 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#D4528A';
-    ctx.font = `bold ${nameSize}px "Microsoft YaHei", "PingFang SC", Arial, sans-serif`;
-    ctx.fillText('拼豆王国', textX, y + h * 0.36);
-    ctx.fillStyle = '#777777';
-    ctx.font = `${urlSize}px "Courier New", Consolas, monospace`;
-    ctx.fillText('https://pindou.skin', textX, y + h * 0.70);
-    ctx.restore();
-  }
 
   download() {
     if (!this.gridData.length) return;
@@ -2173,7 +2083,7 @@ class PixelEditor {
       var px = gx + cs + x * ps, py = gy + cs + y * ps;
       ctx.fillStyle = cell ? cell.hex : '#f5f5f5'; ctx.fillRect(px, py, ps - 1, ps - 1);
       if (cell && ps >= 12) {
-        var lum = this._lum(cell.hex);
+        var lum = hexLuminance(cell.hex);
         ctx.shadowColor = lum > 0.5 ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 3;
         ctx.fillStyle = lum > 0.5 ? '#222' : '#fff'; ctx.font = lfs + 'px Arial';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(cell.name, px + ps/2, py + ps/2);
@@ -2199,7 +2109,7 @@ class PixelEditor {
 
     // ===== 右侧信息卡片（与生成器页一致） =====
     ctx.fillStyle = '#FBF7F8';
-    this.roundRect(ctx, lx, ly, cardW, legendH, 14);
+    roundRect(ctx, lx, ly, cardW, legendH, 14);
     ctx.strokeStyle = '#F4A0B8';
     ctx.lineWidth = 2;
     ctx.stroke();
@@ -2237,7 +2147,7 @@ class PixelEditor {
       var hex = item[0], cnt = item[1];
 
       ctx.fillStyle = hex;
-      this.roundRect(ctx, cx2, cy2 + (rowHeight - boxSize) / 2, boxSize, boxSize, 6);
+      roundRect(ctx, cx2, cy2 + (rowHeight - boxSize) / 2, boxSize, boxSize, 6);
       ctx.strokeStyle = 'rgba(0,0,0,0.25)';
       ctx.lineWidth = 1;
       ctx.stroke();
@@ -2268,7 +2178,7 @@ class PixelEditor {
       var wcm2 = ((bw2 * beadMM2) / 10).toFixed(1), hcm2 = ((bh2 * beadMM2) / 10).toFixed(1);
       var infoY = listBottom + 16;
       ctx.fillStyle = '#FCE9EE';
-      this.roundRect(ctx, lx + pad, infoY, contentW, 58, 10);
+      roundRect(ctx, lx + pad, infoY, contentW, 58, 10);
       ctx.textAlign = 'left';
       ctx.fillStyle = '#333333';
       ctx.font = '19px "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
@@ -2282,7 +2192,7 @@ class PixelEditor {
     var brandX = lx;
     var brandY = ly + legendH + 14;
     if (brandY + cardH > T.h - 16) brandY = T.h - cardH - 16;
-    this._drawBrandCard(ctx, brandX, brandY, cardW, cardH);
+    drawBrandCard(ctx, brandX, brandY, cardW, cardH);
 
     cvs.toBlob(function(blob) {
       var link = document.createElement('a');
