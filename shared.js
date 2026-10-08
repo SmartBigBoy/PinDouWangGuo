@@ -83,7 +83,8 @@ const SHARED = {
                 <span class="brand-text">拼豆王国</span>
             </div>
             <p>© 2026 拼豆王国 | 使用时请确保图片版权合规</p>
-            <p class="footer-contact">📧 联系邮箱：<a href="mailto:pindouwangguo@agent.qq.com">pindouwangguo@agent.qq.com</a></p>
+            <p class="footer-contact">📧 联系邮箱：<a href="mailto:pindouwangguo@qq.com">pindouwangguo@qq.com</a></p>
+            <p class="footer-donate">☕ <a href="#" id="donateFooterLink" class="donate-link">支持作者</a></p>
         </div>
     </footer>
 
@@ -115,33 +116,53 @@ const SHARED = {
     const placeholder = document.getElementById('footer-placeholder');
     if (!placeholder) return;
     placeholder.innerHTML = this.getFooterHTML();
+    // 注入赞赏弹窗（所有页面统一；若页面已内联则跳过）
+    if (!document.getElementById('donateModal')) {
+      placeholder.insertAdjacentHTML('afterend', this.getDonateModalHTML());
+    }
     this.initDonateModal();
   },
 
-  /** 初始化捐款模态框 */
+  /** 赞赏弹窗 HTML */
+  getDonateModalHTML() {
+    return `
+    <div class="modal" id="donateModal">
+        <div class="donate-modal">
+            <span class="modal-close" id="donateClose">&times;</span>
+            <h2>☕ 请我喝杯咖啡</h2>
+            <p>感谢你的支持 💛</p>
+            <div class="donate-qrcode">
+                <img src="images/wechat_donate.png" alt="微信赞赏码">
+            </div>
+            <p class="donate-tip">用微信扫一扫即可赞赏</p>
+        </div>
+    </div>`;
+  },
+
+  /** 初始化赞赏弹窗：首页大按钮 + 页脚小链接都可打开 */
   initDonateModal() {
     const modal = document.getElementById('donateModal');
-    const btn = document.getElementById('donateBtn');
+    if (!modal) return;
     const close = document.getElementById('donateClose');
 
-    if (!modal || !btn || !close) return;
-
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
+    const open = (e) => {
+      if (e) e.preventDefault();
       modal.style.display = 'block';
       document.body.style.overflow = 'hidden';
-    });
-
-    close.addEventListener('click', () => {
+    };
+    const closeModal = () => {
       modal.style.display = 'none';
       document.body.style.overflow = '';
-    });
+    };
 
+    const btn = document.getElementById('donateBtn');
+    if (btn) btn.addEventListener('click', open);
+    const link = document.getElementById('donateFooterLink');
+    if (link) link.addEventListener('click', open);
+
+    if (close) close.addEventListener('click', closeModal);
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        modal.style.display = 'none';
-        document.body.style.overflow = '';
-      }
+      if (e.target === modal) closeModal();
     });
   },
 
