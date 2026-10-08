@@ -1696,7 +1696,7 @@ class PixelArtGenerator {
         drawBrandCard(ctx, brandX, brandY, cardW, cardH);
 
         const link = document.createElement('a');
-        link.download = `pixel-art-pure-${Date.now()}.png`;
+        link.download = downloadFilename('pixel-art-pure', 'png');
         link.href = canvas.toDataURL('image/png');
         link.click();
         showToast('已下载纯像素图');
@@ -1940,7 +1940,7 @@ class PixelArtGenerator {
         drawBrandCard(ctx, brandX, brandY, cardW, cardH);
 
         const link = document.createElement('a');
-        link.download = `pixel-art-full-${Date.now()}.png`;
+        link.download = downloadFilename('pixel-art-full', 'png');
         link.href = canvas.toDataURL('image/png');
         link.click();
         showToast('已下载全信息图');
@@ -2015,27 +2015,18 @@ class PixelArtGenerator {
         const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = `materials-list-${Date.now()}.csv`;
+        link.download = downloadFilename('materials-list', 'csv');
         link.click();
         showToast('已下载材料清单');
     }
 
     selectColorInPalette(hex) {
         if (!this.colorPalette) return;
-        const swatches = this.colorPalette.querySelectorAll('.color-swatch');
-        swatches.forEach(el => {
-            const inner = el.querySelector('.color-swatch-inner');
-            if (inner) {
-                const bg = inner.style.backgroundColor;
-                if (bg && 'rgb(' + parseInt(hex.slice(1,3),16) + ', ' + parseInt(hex.slice(3,5),16) + ', ' + parseInt(hex.slice(5,7),16) + ')' === bg) {
-                    el.style.outline = '3px solid #333';
-                    el.style.outlineOffset = '2px';
-                    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                } else {
-                    el.style.outline = '';
-                    el.style.outlineOffset = '';
-                }
-            }
+        this.colorPalette.querySelectorAll('.color-swatch').forEach(el => {
+            const isMatch = el.dataset.hex === hex;
+            el.style.outline = isMatch ? '3px solid #333' : '';
+            el.style.outlineOffset = isMatch ? '2px' : '';
+            if (isMatch) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
     }
 
@@ -2043,10 +2034,10 @@ class PixelArtGenerator {
         if (sourceHex === targetHex || !this.pixelData.length) return;
 
         // 从当前色库中查找目标颜色对象（而非仅 currentColors）
-        var paletteKey = this.paletteSelect ? this.paletteSelect.value : 'mard291';
-        var flatPalette = this.palettes[paletteKey] || this.perlerColors;
-        var targetColor = null;
-        for (var i = 0; i < flatPalette.length; i++) {
+        let paletteKey = this.paletteSelect ? this.paletteSelect.value : 'mard291';
+        let flatPalette = this.palettes[paletteKey] || this.perlerColors;
+        let targetColor = null;
+        for (let i = 0; i < flatPalette.length; i++) {
             if (flatPalette[i].hex === targetHex) { targetColor = flatPalette[i]; break; }
         }
         if (!targetColor) return;
@@ -2069,11 +2060,11 @@ class PixelArtGenerator {
             }
         }
         // 重建 currentColors：从 pixelData 中收集实际使用的颜色
-        var usedColors = [];
-        var seenHexes = new Set();
-        for (var y = 0; y < this.pixelData.length; y++) {
-            for (var x = 0; x < this.pixelData[y].length; x++) {
-                var px = this.pixelData[y][x];
+        let usedColors = [];
+        let seenHexes = new Set();
+        for (let y = 0; y < this.pixelData.length; y++) {
+            for (let x = 0; x < this.pixelData[y].length; x++) {
+                let px = this.pixelData[y][x];
                 if (!px.isEmpty && !seenHexes.has(px.color.hex)) {
                     seenHexes.add(px.color.hex);
                     usedColors.push(px.color);
@@ -2350,41 +2341,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 颜色替换选择器
     window._picker = function(sourceHex) {
-        var gen = window._generator;
+        let gen = window._generator;
         if (!gen || !gen.currentColors) return;
 
         // 移除已有面板
-        var old = document.querySelector('.replace-picker-overlay');
+        let old = document.querySelector('.replace-picker-overlay');
         if (old) old.remove();
 
         // 获取当前色库及色系分组
-        var paletteKey = gen.paletteSelect ? gen.paletteSelect.value : 'mard291';
-        var paletteData = palettes[paletteKey];
+        let paletteKey = gen.paletteSelect ? gen.paletteSelect.value : 'mard291';
+        let paletteData = palettes[paletteKey];
         if (!paletteData || !paletteData.series) { showToast('色库数据不可用'); return; }
 
-        var seriesKeys = Object.keys(paletteData.series);
-        var srcName = '';
-        for (var ci = 0; ci < gen.currentColors.length; ci++) {
+        let seriesKeys = Object.keys(paletteData.series);
+        let srcName = '';
+        for (let ci = 0; ci < gen.currentColors.length; ci++) {
             if (gen.currentColors[ci].hex === sourceHex) { srcName = gen.currentColors[ci].name; break; }
         }
 
         // 构建色系标签
-        var tabsHtml = seriesKeys.map(function(sk) {
+        let tabsHtml = seriesKeys.map(function(sk) {
             return '<button class="replace-picker-tab" data-series="' + sk + '" title="' + paletteData.series[sk].name + '">' + sk + '</button>';
         }).join('');
 
         // 构建分组颜色网格（排除源颜色）
-        var groupsHtml = seriesKeys.map(function(sk, idx) {
-            var series = paletteData.series[sk];
-            var colorItems = series.colors.filter(function(c) { return c.hex !== sourceHex; });
-            var gridHtml = colorItems.map(function(c) {
+        let groupsHtml = seriesKeys.map(function(sk, idx) {
+            let series = paletteData.series[sk];
+            let colorItems = series.colors.filter(function(c) { return c.hex !== sourceHex; });
+            let gridHtml = colorItems.map(function(c) {
                 return '<button class="replace-picker-item" data-hex="' + c.hex + '" style="background:' + c.hex + ';" title="' + c.name + '"><span>' + c.name + '</span></button>';
             }).join('');
             return '<div class="replace-picker-series" data-series="' + sk + '"><div class="replace-picker-series-header" style="--series-color:' + (series.color || '#999') + ';">' + series.name + ' <span class="replace-picker-series-count">' + colorItems.length + '色</span></div><div class="replace-picker-grid">' + gridHtml + '</div></div>';
         }).join('');
 
         // 创建可视化替换面板
-        var overlay = document.createElement('div');
+        let overlay = document.createElement('div');
         overlay.className = 'replace-picker-overlay';
         overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:20000;display:flex;align-items:center;justify-content:center;';
 
@@ -2399,8 +2390,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // 色系标签点击 → 滚动到对应分组
         overlay.querySelectorAll('.replace-picker-tab').forEach(function(tab) {
             tab.addEventListener('click', function() {
-                var sk = tab.dataset.series;
-                var target = overlay.querySelector('.replace-picker-series[data-series="' + sk + '"]');
+                let sk = tab.dataset.series;
+                let target = overlay.querySelector('.replace-picker-series[data-series="' + sk + '"]');
                 if (target) {
                     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
@@ -2410,7 +2401,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 点击候选颜色执行替换
         overlay.querySelectorAll('.replace-picker-item').forEach(function(item) {
             item.addEventListener('click', function() {
-                var targetHex = item.dataset.hex;
+                let targetHex = item.dataset.hex;
                 gen.replaceColor(sourceHex, targetHex);
                 showToast('已替换颜色');
                 overlay.remove();
@@ -2430,21 +2421,21 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(overlay);
 
         // 默认激活第一个标签
-        var firstTab = overlay.querySelector('.replace-picker-tab');
+        let firstTab = overlay.querySelector('.replace-picker-tab');
         if (firstTab) firstTab.classList.add('active');
 
         // 滚动监听：高亮当前可见色系的标签
-        var scrollArea = overlay.querySelector('.replace-picker-scroll');
-        var allTabs = overlay.querySelectorAll('.replace-picker-tab');
+        let scrollArea = overlay.querySelector('.replace-picker-scroll');
+        let allTabs = overlay.querySelectorAll('.replace-picker-tab');
         scrollArea.addEventListener('scroll', function() {
-            var minDist = Infinity, activeSk = null;
+            let minDist = Infinity, activeSk = null;
             allTabs.forEach(function(tab) {
-                var sk = tab.dataset.series;
-                var el = overlay.querySelector('.replace-picker-series[data-series="' + sk + '"]');
+                let sk = tab.dataset.series;
+                let el = overlay.querySelector('.replace-picker-series[data-series="' + sk + '"]');
                 if (el) {
-                    var rect = el.getBoundingClientRect();
-                    var boxRect = scrollArea.getBoundingClientRect();
-                    var dist = Math.abs(rect.top - boxRect.top);
+                    let rect = el.getBoundingClientRect();
+                    let boxRect = scrollArea.getBoundingClientRect();
+                    let dist = Math.abs(rect.top - boxRect.top);
                     if (dist < minDist) { minDist = dist; activeSk = sk; }
                 }
             });

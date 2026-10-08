@@ -2034,56 +2034,56 @@ class PixelEditor {
 
   download() {
     if (!this.gridData.length) return;
-    var W = this.gridWidth, H = this.gridHeight;
-    var cs = 40, T = { w: 3840, h: 2160 };
+    let W = this.gridWidth, H = this.gridHeight;
+    let cs = 40, T = { w: 3840, h: 2160 };
 
     // 统计颜色（按用量降序）
-    var cm = new Map(), filled = 0;
-    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) { var c = this.gridData[y][x]; if (c) { filled++; cm.set(c.hex, (cm.get(c.hex)||0)+1); } }
-    var usedColors = [...cm.entries()].sort(function(a, b) { return b[1] - a[1]; });
+    let cm = new Map(), filled = 0;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { let c = this.gridData[y][x]; if (c) { filled++; cm.set(c.hex, (cm.get(c.hex)||0)+1); } }
+    let usedColors = [...cm.entries()].sort(function(a, b) { return b[1] - a[1]; });
 
     // ===== 右侧信息卡片尺寸（与生成器页全信息图一致） =====
-    var pad = 24, rowHeight = 40, boxSize = 24, headH = 88, cardH = 132;
-    var contentH = T.h - (cardH + 36);
-    var beadMM2 = parseFloat(this.beadSizeSelect ? this.beadSizeSelect.value : 5);
-    var bbox2 = this._bbox;
-    var hasInfo = !!(bbox2 && bbox2.maxX >= 0);
-    var infoH = hasInfo ? 96 : 16;
-    var maxRows = Math.max(1, Math.floor((contentH - cs - 40 - headH - infoH) / rowHeight));
-    var legendColumns = Math.max(1, Math.ceil(usedColors.length / maxRows));
-    var legendRows = Math.max(1, Math.ceil(usedColors.length / legendColumns));
-    var cardW = Math.max(legendColumns * 250 + pad * 2, 430);
-    var colWidth = (cardW - pad * 2) / legendColumns;
-    var legendH = headH + legendRows * rowHeight + infoH + pad;
+    let pad = 24, rowHeight = 40, boxSize = 24, headH = 88, cardH = 132;
+    let contentH = T.h - (cardH + 36);
+    let beadMM2 = parseFloat(this.beadSizeSelect ? this.beadSizeSelect.value : 5);
+    let bbox2 = this._bbox;
+    let hasInfo = !!(bbox2 && bbox2.maxX >= 0);
+    let infoH = hasInfo ? 96 : 16;
+    let maxRows = Math.max(1, Math.floor((contentH - cs - 40 - headH - infoH) / rowHeight));
+    let legendColumns = Math.max(1, Math.ceil(usedColors.length / maxRows));
+    let legendRows = Math.max(1, Math.ceil(usedColors.length / legendColumns));
+    let cardW = Math.max(legendColumns * 250 + pad * 2, 430);
+    let colWidth = (cardW - pad * 2) / legendColumns;
+    let legendH = headH + legendRows * rowHeight + infoH + pad;
 
     // ===== 主图尺寸（主图 + 图例整体居中于内容区） =====
-    var availableMainWidth = T.w - cs - cardW - 60;
-    var availableMainHeight = contentH - cs - 40;
-    var ps = Math.max(1, Math.min(Math.floor(availableMainWidth / W), Math.floor(availableMainHeight / H)));
-    var mw = W * ps, mh = H * ps;
+    let availableMainWidth = T.w - cs - cardW - 60;
+    let availableMainHeight = contentH - cs - 40;
+    let ps = Math.max(1, Math.min(Math.floor(availableMainWidth / W), Math.floor(availableMainHeight / H)));
+    let mw = W * ps, mh = H * ps;
 
-    var totalW = mw + cs + 40 + cardW;
-    var gx = Math.floor((T.w - totalW) / 2);
-    var gy = Math.floor((contentH - mh - cs) / 2);
-    var lx = gx + mw + cs + 24;
-    var ly = gy + cs;  // 卡片上边缘与图案上边框对齐
+    let totalW = mw + cs + 40 + cardW;
+    let gx = Math.floor((T.w - totalW) / 2);
+    let gy = Math.floor((contentH - mh - cs) / 2);
+    let lx = gx + mw + cs + 24;
+    let ly = gy + cs;  // 卡片上边缘与图案上边框对齐
 
-    var cvs = document.createElement('canvas');
+    let cvs = document.createElement('canvas');
     cvs.width = T.w; cvs.height = T.h;
-    var ctx = cvs.getContext('2d');
+    let ctx = cvs.getContext('2d');
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = '#f5f5f0'; ctx.fillRect(0, 0, T.w, T.h);
 
     // 坐标轴背景
     ctx.fillStyle = '#e8e9f0'; ctx.fillRect(gx, gy, mw + cs, cs); ctx.fillRect(gx, gy, cs, mh + cs);
 
-    var lfs = Math.max(7, Math.min(11, Math.floor(ps * 0.38)));
-    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
-      var cell = this.gridData[y][x];
-      var px = gx + cs + x * ps, py = gy + cs + y * ps;
+    let lfs = Math.max(7, Math.min(11, Math.floor(ps * 0.38)));
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let cell = this.gridData[y][x];
+      let px = gx + cs + x * ps, py = gy + cs + y * ps;
       ctx.fillStyle = cell ? cell.hex : '#f5f5f5'; ctx.fillRect(px, py, ps - 1, ps - 1);
       if (cell && ps >= 12) {
-        var lum = hexLuminance(cell.hex);
+        let lum = hexLuminance(cell.hex);
         ctx.shadowColor = lum > 0.5 ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 3;
         ctx.fillStyle = lum > 0.5 ? '#222' : '#fff'; ctx.font = lfs + 'px Arial';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(cell.name, px + ps/2, py + ps/2);
@@ -2091,21 +2091,21 @@ class PixelEditor {
       }
     }
     ctx.strokeStyle = '#e0e0e8'; ctx.lineWidth = 1;
-    for (var x = 0; x <= W; x++) { ctx.beginPath(); ctx.moveTo(gx+cs+x*ps,gy+cs); ctx.lineTo(gx+cs+x*ps,gy+cs+mh); ctx.stroke(); }
-    for (var y = 0; y <= H; y++) { ctx.beginPath(); ctx.moveTo(gx+cs,gy+cs+y*ps); ctx.lineTo(gx+cs+mw,gy+cs+y*ps); ctx.stroke(); }
+    for (let x = 0; x <= W; x++) { ctx.beginPath(); ctx.moveTo(gx+cs+x*ps,gy+cs); ctx.lineTo(gx+cs+x*ps,gy+cs+mh); ctx.stroke(); }
+    for (let y = 0; y <= H; y++) { ctx.beginPath(); ctx.moveTo(gx+cs,gy+cs+y*ps); ctx.lineTo(gx+cs+mw,gy+cs+y*ps); ctx.stroke(); }
     ctx.strokeStyle = '#555'; ctx.lineWidth = 2;
-    for (var x = 5; x < W; x += 5) { ctx.beginPath(); ctx.moveTo(gx+cs+x*ps,gy+cs); ctx.lineTo(gx+cs+x*ps,gy+cs+mh); ctx.stroke(); }
-    for (var y = 5; y < H; y += 5) { ctx.beginPath(); ctx.moveTo(gx+cs,gy+cs+y*ps); ctx.lineTo(gx+cs+mw,gy+cs+y*ps); ctx.stroke(); }
+    for (let x = 5; x < W; x += 5) { ctx.beginPath(); ctx.moveTo(gx+cs+x*ps,gy+cs); ctx.lineTo(gx+cs+x*ps,gy+cs+mh); ctx.stroke(); }
+    for (let y = 5; y < H; y += 5) { ctx.beginPath(); ctx.moveTo(gx+cs,gy+cs+y*ps); ctx.lineTo(gx+cs+mw,gy+cs+y*ps); ctx.stroke(); }
     ctx.strokeStyle = '#ff0000'; ctx.lineWidth = 3;
-    var mx = Math.floor(W/2), my = Math.floor(H/2);
+    let mx = Math.floor(W/2), my = Math.floor(H/2);
     ctx.beginPath(); ctx.moveTo(gx+cs+mx*ps,gy+cs); ctx.lineTo(gx+cs+mx*ps,gy+cs+mh); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(gx+cs,gy+cs+my*ps); ctx.lineTo(gx+cs+mw,gy+cs+my*ps); ctx.stroke();
-    var labelStep = this._calcLabelStep(ps);
-    var labelSize = Math.max(10, Math.min(18, Math.floor(ps * 1.2)));
+    let labelStep = this._calcLabelStep(ps);
+    let labelSize = Math.max(10, Math.min(18, Math.floor(ps * 1.2)));
     ctx.fillStyle = '#333'; ctx.font = 'bold ' + labelSize + 'px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    for (var x = 0; x < W; x++) { if ((x+1) % labelStep === 0) ctx.fillText(x+1, gx+cs+x*ps+ps/2, gy+cs/2); }
+    for (let x = 0; x < W; x++) { if ((x+1) % labelStep === 0) ctx.fillText(x+1, gx+cs+x*ps+ps/2, gy+cs/2); }
     ctx.textAlign = 'right';
-    for (var y = 0; y < H; y++) { if ((y+1) % labelStep === 0) ctx.fillText(y+1, gx+cs-8, gy+cs+y*ps+ps/2); }
+    for (let y = 0; y < H; y++) { if ((y+1) % labelStep === 0) ctx.fillText(y+1, gx+cs-8, gy+cs+y*ps+ps/2); }
 
     // ===== 右侧信息卡片（与生成器页一致） =====
     ctx.fillStyle = '#FBF7F8';
@@ -2114,8 +2114,8 @@ class PixelEditor {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    var y0 = ly + pad;
-    var contentW = cardW - pad * 2;
+    let y0 = ly + pad;
+    let contentW = cardW - pad * 2;
 
     // 标题 + 色卡名副标题
     ctx.textAlign = 'left';
@@ -2123,7 +2123,7 @@ class PixelEditor {
     ctx.fillStyle = '#D4528A';
     ctx.font = 'bold 30px "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
     ctx.fillText('色号清单', lx + pad, y0 + 20);
-    var paletteLabel = (this.paletteSelect && this.paletteSelect.selectedOptions && this.paletteSelect.selectedOptions[0])
+    let paletteLabel = (this.paletteSelect && this.paletteSelect.selectedOptions && this.paletteSelect.selectedOptions[0])
       ? this.paletteSelect.selectedOptions[0].text : 'MARD';
     ctx.fillStyle = '#333333';
     ctx.font = '19px "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
@@ -2138,13 +2138,13 @@ class PixelEditor {
     ctx.stroke();
 
     // 色号列表：色块 + 名称（左） + 数量（右对齐）
-    var listY = y0 + 80;
+    let listY = y0 + 80;
     usedColors.forEach((item, index) => {
-      var col = Math.floor(index / legendRows);
-      var row = index % legendRows;
-      var cx2 = lx + pad + col * colWidth;
-      var cy2 = listY + row * rowHeight;
-      var hex = item[0], cnt = item[1];
+      let col = Math.floor(index / legendRows);
+      let row = index % legendRows;
+      let cx2 = lx + pad + col * colWidth;
+      let cy2 = listY + row * rowHeight;
+      let hex = item[0], cnt = item[1];
 
       ctx.fillStyle = hex;
       roundRect(ctx, cx2, cy2 + (rowHeight - boxSize) / 2, boxSize, boxSize, 6);
@@ -2164,7 +2164,7 @@ class PixelEditor {
     });
 
     // 列表下方分隔线
-    var listBottom = listY + legendRows * rowHeight + 12;
+    let listBottom = listY + legendRows * rowHeight + 12;
     ctx.strokeStyle = '#EAD6DB';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -2174,9 +2174,9 @@ class PixelEditor {
 
     // 实物尺寸信息块（色号清单下方）
     if (hasInfo) {
-      var bw2 = bbox2.maxX - bbox2.minX + 1, bh2 = bbox2.maxY - bbox2.minY + 1;
-      var wcm2 = ((bw2 * beadMM2) / 10).toFixed(1), hcm2 = ((bh2 * beadMM2) / 10).toFixed(1);
-      var infoY = listBottom + 16;
+      let bw2 = bbox2.maxX - bbox2.minX + 1, bh2 = bbox2.maxY - bbox2.minY + 1;
+      let wcm2 = ((bw2 * beadMM2) / 10).toFixed(1), hcm2 = ((bh2 * beadMM2) / 10).toFixed(1);
+      let infoY = listBottom + 16;
       ctx.fillStyle = '#FCE9EE';
       roundRect(ctx, lx + pad, infoY, contentW, 58, 10);
       ctx.textAlign = 'left';
@@ -2189,14 +2189,14 @@ class PixelEditor {
     }
 
     // 引流卡片：紧贴卡片下方，同宽同框色
-    var brandX = lx;
-    var brandY = ly + legendH + 14;
+    let brandX = lx;
+    let brandY = ly + legendH + 14;
     if (brandY + cardH > T.h - 16) brandY = T.h - cardH - 16;
     drawBrandCard(ctx, brandX, brandY, cardW, cardH);
 
     cvs.toBlob(function(blob) {
-      var link = document.createElement('a');
-      link.download = 'pixel-art-full-' + Date.now() + '.png';
+      let link = document.createElement('a');
+      link.download = downloadFilename('pixel-art-full', 'png');
       link.href = URL.createObjectURL(blob); link.click();
       URL.revokeObjectURL(link.href);
       showToast('已下载全信息图');

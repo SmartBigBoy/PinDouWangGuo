@@ -102,74 +102,7 @@ const palettes = {
     mard221: {
         name: 'MARD 标准 221',
         info: 'MARD 标准221色是经过精选的核心色系，前缀A到M，适合大多数拼豆创作需求，是国内零售最常见的版本。',
-        series: {
-            A: { name: '黄橙系', icon: 'A', color: '#FFD700', colors: [
-                {name:'A1',hex:'#FAF4C8'},{name:'A2',hex:'#FFFFD5'},{name:'A3',hex:'#FEFF8B'},{name:'A4',hex:'#FBED56'},{name:'A5',hex:'#F4D738'},
-                {name:'A6',hex:'#FEAC4C'},{name:'A7',hex:'#FE8B4C'},{name:'A8',hex:'#FFDA45'},{name:'A9',hex:'#FF995B'},{name:'A10',hex:'#F77C31'},
-                {name:'A11',hex:'#FFDD99'},{name:'A12',hex:'#FE9F72'},{name:'A13',hex:'#FFC365'},{name:'A14',hex:'#FD543D'},{name:'A15',hex:'#FFF365'},
-                {name:'A16',hex:'#FFFF9F'},{name:'A17',hex:'#FFE36E'},{name:'A18',hex:'#FEBE7D'},{name:'A19',hex:'#FD7C72'},{name:'A20',hex:'#FFD568'},
-                {name:'A21',hex:'#FFE395'},{name:'A22',hex:'#F4F57D'},{name:'A23',hex:'#E6C9B7'},{name:'A24',hex:'#F7F8A2'},{name:'A25',hex:'#FFD67D'},
-                {name:'A26',hex:'#FFC830'}
-            ]},
-            B: { name: '绿色系', icon: 'B', color: '#4CAF50', colors: [
-                {name:'B1',hex:'#E6EE31'},{name:'B2',hex:'#63F347'},{name:'B3',hex:'#9EF780'},{name:'B4',hex:'#5DE035'},{name:'B5',hex:'#35E352'},
-                {name:'B6',hex:'#65E2A6'},{name:'B7',hex:'#3DAF80'},{name:'B8',hex:'#1C9C4F'},{name:'B9',hex:'#27523A'},{name:'B10',hex:'#95D3C2'},
-                {name:'B11',hex:'#5D722A'},{name:'B12',hex:'#166F41'},{name:'B13',hex:'#CAEB7B'},{name:'B14',hex:'#ADE946'},{name:'B15',hex:'#2E5132'},
-                {name:'B16',hex:'#C5ED9C'},{name:'B17',hex:'#9BB13A'},{name:'B18',hex:'#E6EE49'},{name:'B19',hex:'#24B88C'},{name:'B20',hex:'#C2F0CC'},
-                {name:'B21',hex:'#156A6B'},{name:'B22',hex:'#0B3C43'},{name:'B23',hex:'#303A21'},{name:'B24',hex:'#EEFCA5'},{name:'B25',hex:'#4E846D'},
-                {name:'B26',hex:'#8D7A35'},{name:'B27',hex:'#CCE1AF'},{name:'B28',hex:'#9EE5B9'},{name:'B29',hex:'#C5E254'},{name:'B30',hex:'#E2FCB1'},
-                {name:'B31',hex:'#B0E792'},{name:'B32',hex:'#9CAB5A'}
-            ]},
-            C: { name: '蓝青系', icon: 'C', color: '#2196F3', colors: [
-                {name:'C1',hex:'#E8FFE7'},{name:'C2',hex:'#A9F9FC'},{name:'C3',hex:'#A0E2FB'},{name:'C4',hex:'#41CCFF'},{name:'C5',hex:'#01ACEB'},
-                {name:'C6',hex:'#50AAF0'},{name:'C7',hex:'#3677D2'},{name:'C8',hex:'#0F54C0'},{name:'C9',hex:'#324BCA'},{name:'C10',hex:'#3EBCE2'},
-                {name:'C11',hex:'#28DDDE'},{name:'C12',hex:'#1C334D'},{name:'C13',hex:'#CDE8FF'},{name:'C14',hex:'#D5FDFF'},{name:'C15',hex:'#22C4C6'},
-                {name:'C16',hex:'#1557A8'},{name:'C17',hex:'#04D1F6'},{name:'C18',hex:'#1D3344'},{name:'C19',hex:'#1887A2'},{name:'C20',hex:'#176DAF'},
-                {name:'C21',hex:'#BEDDFF'},{name:'C22',hex:'#67B4BE'},{name:'C23',hex:'#C8E2FF'},{name:'C24',hex:'#7CC4FF'},{name:'C25',hex:'#A9E5E5'},
-                {name:'C26',hex:'#3CAED8'},{name:'C27',hex:'#D3DFFA'},{name:'C28',hex:'#BBCFED'},{name:'C29',hex:'#34488E'}
-            ]},
-            D: { name: '紫蓝系', icon: 'D', color: '#9C27B0', colors: [
-                {name:'D1',hex:'#AEB4F2'},{name:'D2',hex:'#858EDD'},{name:'D3',hex:'#2F54AF'},{name:'D4',hex:'#182A84'},{name:'D5',hex:'#B843C5'},
-                {name:'D6',hex:'#AC7BDE'},{name:'D7',hex:'#8854B3'},{name:'D8',hex:'#E2D3FF'},{name:'D9',hex:'#D5B9F8'},{name:'D10',hex:'#361851'},
-                {name:'D11',hex:'#B9BAE1'},{name:'D12',hex:'#DE9AD4'},{name:'D13',hex:'#B90095'},{name:'D14',hex:'#8B279B'},{name:'D15',hex:'#2F1F90'},
-                {name:'D16',hex:'#E3E1EE'},{name:'D17',hex:'#C4D4F6'},{name:'D18',hex:'#A45EC7'},{name:'D19',hex:'#D8C3D7'},{name:'D20',hex:'#9C32B2'},
-                {name:'D21',hex:'#9A009B'},{name:'D22',hex:'#333A95'},{name:'D23',hex:'#EBDAFC'},{name:'D24',hex:'#7786E5'},{name:'D25',hex:'#494FC7'},
-                {name:'D26',hex:'#DFC2F8'}
-            ]},
-            E: { name: '粉色系', icon: 'E', color: '#E91E63', colors: [
-                {name:'E1',hex:'#FDD3CC'},{name:'E2',hex:'#FEC0DF'},{name:'E3',hex:'#FFB7E7'},{name:'E4',hex:'#E8649E'},{name:'E5',hex:'#F551A2'},
-                {name:'E6',hex:'#F13D74'},{name:'E7',hex:'#C63478'},{name:'E8',hex:'#FFDBE9'},{name:'E9',hex:'#E970CC'},{name:'E10',hex:'#D33793'},
-                {name:'E11',hex:'#FCDDD2'},{name:'E12',hex:'#F78FC3'},{name:'E13',hex:'#B5006D'},{name:'E14',hex:'#FFD1BA'},{name:'E15',hex:'#F8C7C9'},
-                {name:'E16',hex:'#FFF3EB'},{name:'E17',hex:'#FFE2EA'},{name:'E18',hex:'#FFC7DB'},{name:'E19',hex:'#FEBAD5'},{name:'E20',hex:'#D8C7D1'},
-                {name:'E21',hex:'#BD9DA1'},{name:'E22',hex:'#B785A1'},{name:'E23',hex:'#937A8D'},{name:'E24',hex:'#E1BCE8'}
-            ]},
-            F: { name: '红色系', icon: 'F', color: '#F44336', colors: [
-                {name:'F1',hex:'#FD957B'},{name:'F2',hex:'#FC3D46'},{name:'F3',hex:'#F74941'},{name:'F4',hex:'#FC283C'},{name:'F5',hex:'#E7002F'},
-                {name:'F6',hex:'#943630'},{name:'F7',hex:'#971937'},{name:'F8',hex:'#BC0028'},{name:'F9',hex:'#E2677A'},{name:'F10',hex:'#8A4526'},
-                {name:'F11',hex:'#5A2121'},{name:'F12',hex:'#FD4E6A'},{name:'F13',hex:'#F35744'},{name:'F14',hex:'#FFA9AD'},{name:'F15',hex:'#D30022'},
-                {name:'F16',hex:'#FEC2A6'},{name:'F17',hex:'#E69C79'},{name:'F18',hex:'#D37C46'},{name:'F19',hex:'#C1444A'},{name:'F20',hex:'#CD9391'},
-                {name:'F21',hex:'#F7B4C6'},{name:'F22',hex:'#FDC0D0'},{name:'F23',hex:'#F67E66'},{name:'F24',hex:'#E698AA'},{name:'F25',hex:'#E54B4F'}
-            ]},
-            G: { name: '棕色系', icon: 'G', color: '#795548', colors: [
-                {name:'G1',hex:'#FFE2CE'},{name:'G2',hex:'#FFC4AA'},{name:'G3',hex:'#F4C3A5'},{name:'G4',hex:'#E1B383'},{name:'G5',hex:'#EDB045'},
-                {name:'G6',hex:'#E99C17'},{name:'G7',hex:'#9D5B3E'},{name:'G8',hex:'#753832'},{name:'G9',hex:'#E6B483'},{name:'G10',hex:'#D98C39'},
-                {name:'G11',hex:'#E0C593'},{name:'G12',hex:'#FFC890'},{name:'G13',hex:'#B7714A'},{name:'G14',hex:'#8D614C'},{name:'G15',hex:'#FCF9E0'},
-                {name:'G16',hex:'#F2D9BA'},{name:'G17',hex:'#78524B'},{name:'G18',hex:'#FFE4CC'},{name:'G19',hex:'#E07935'},{name:'G20',hex:'#A94023'},
-                {name:'G21',hex:'#B88558'}
-            ]},
-            H: { name: '黑白灰系', icon: 'H', color: '#333333', colors: [
-                {name:'H1',hex:'#FDFBFF'},{name:'H2',hex:'#FEFFFF'},{name:'H3',hex:'#B6B1BA'},{name:'H4',hex:'#89858C'},{name:'H5',hex:'#48464E'},
-                {name:'H6',hex:'#2F2B2F'},{name:'H7',hex:'#000000'},{name:'H8',hex:'#E7D6DB'},{name:'H9',hex:'#EDEDED'},{name:'H10',hex:'#EEE9EA'},
-                {name:'H11',hex:'#CECDD5'},{name:'H12',hex:'#FFF5ED'},{name:'H13',hex:'#F5ECD2'},{name:'H14',hex:'#CFD7D3'},{name:'H15',hex:'#98A6A8'},
-                {name:'H16',hex:'#1D1414'},{name:'H17',hex:'#F1EDED'},{name:'H18',hex:'#FFFDF0'},{name:'H19',hex:'#F6EFE2'},{name:'H20',hex:'#949FA3'},
-                {name:'H21',hex:'#FFFBE1'},{name:'H22',hex:'#CACAD4'},{name:'H23',hex:'#9A9D94'}
-            ]},
-            M: { name: '多彩系', icon: 'M', color: '#FF6B6B', colors: [
-                {name:'M1',hex:'#BCC6B8'},{name:'M2',hex:'#8AA386'},{name:'M3',hex:'#697D80'},{name:'M4',hex:'#E3D2BC'},{name:'M5',hex:'#D0CCAA'},
-                {name:'M6',hex:'#B0A782'},{name:'M7',hex:'#B4A497'},{name:'M8',hex:'#B38281'},{name:'M9',hex:'#A58767'},{name:'M10',hex:'#C5B2BC'},
-                {name:'M11',hex:'#9F7594'},{name:'M12',hex:'#644749'},{name:'M13',hex:'#D19066'},{name:'M14',hex:'#C77362'},{name:'M15',hex:'#757D78'}
-            ]}
-        }
+        series: {}  // 色号数据复用 mard291 的 A-M 系列，见文件末尾
     },
     artkal: {
         name: 'Artkal',
@@ -342,4 +275,17 @@ const palettes = {
             ]}
         }
     }
+};
+
+// mard221 复用 mard291 的 A-M 系列色号数据（仅系列名不同的覆盖），避免重复维护
+palettes.mard221.series = {
+    A: { ...palettes.mard291.series.A, name: '黄橙系' },
+    B: palettes.mard291.series.B,
+    C: { ...palettes.mard291.series.C, name: '蓝青系' },
+    D: { ...palettes.mard291.series.D, name: '紫蓝系' },
+    E: palettes.mard291.series.E,
+    F: palettes.mard291.series.F,
+    G: palettes.mard291.series.G,
+    H: palettes.mard291.series.H,
+    M: palettes.mard291.series.M,
 };

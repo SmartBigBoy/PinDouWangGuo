@@ -115,3 +115,10 @@ function showToast(message) {
         toast.classList.remove('show');
     }, 2000);
 }
+
+/** 生成带递增计数器的下载文件名，避免连续快速下载同名 */
+let _downloadSeq = 0;
+function downloadFilename(prefix, ext) {
+    _downloadSeq = (_downloadSeq + 1) % 10000;
+    return `${prefix}-${Date.now()}-${_downloadSeq}.${ext}`;
+}
