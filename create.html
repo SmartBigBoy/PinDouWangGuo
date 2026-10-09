@@ -400,6 +400,14 @@
             font-size: 0.82rem;
             justify-content: center;
         }
+        .action-row--stack .btn {
+            flex-direction: column;
+            gap: 4px;
+            padding: 10px 6px 9px;
+            line-height: 1.2;
+        }
+        .action-row--stack .btn-icon { font-size: 1.15rem; line-height: 1; }
+        .action-row--stack .btn-label { font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
         /* 全宽按钮（导入并像素化） */
         .btn-block {
             width: 100%;
@@ -928,10 +936,12 @@
                 </div>
 
                 <!-- 操作按钮 -->
-                <div class="action-row">
-                    <button class="btn btn-primary" id="editorDownloadBtn">📥 下载</button>
-                    <button class="btn btn-secondary" id="editorClearBtn">🗑️ 清空</button>
+                <div class="action-row action-row--stack">
+                    <button class="btn btn-primary" id="editorDownloadBtn"><span class="btn-icon">📥</span><span class="btn-label">下载</span></button>
+                    <button class="btn btn-primary" id="editorSaveBtn"><span class="btn-icon">💾</span><span class="btn-label">保存作品</span></button>
+                    <button class="btn btn-secondary" id="editorClearBtn"><span class="btn-icon">🗑️</span><span class="btn-label">清空</span></button>
                 </div>
+                <p style="font-size:0.72rem;color:var(--text-muted);margin-top:6px;text-align:center;">💾 仅保存在当前浏览器，清理浏览器数据会丢失；可在「我的作品」页导出备份。</p>
 
             </div>
         </div>
@@ -1005,6 +1015,7 @@
 
     <script src="colors.js"></script>
     <script src="common.js"></script>
+    <script src="storage.js"></script>
     <script src="create.js"></script>
     <script src="shared.js"></script>
 </body>

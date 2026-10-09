@@ -91,6 +91,7 @@ class PixelArtGenerator {
         this.exportCsvBtn = document.getElementById('exportCsvBtn');
         this.downloadPureBtn = document.getElementById('downloadPureBtn');
         this.downloadFullBtn = document.getElementById('downloadFullBtn');
+        this.saveProjectBtn = document.getElementById('saveProjectBtn');
         this.beadSizeSelect = document.getElementById('beadSize');
         this.physicalSizeEl = document.getElementById('physicalSize');
         this.physicalDimensionsEl = document.getElementById('physicalDimensions');
@@ -218,6 +219,9 @@ class PixelArtGenerator {
 
         if (this.downloadFullBtn) {
             this.downloadFullBtn.addEventListener('click', () => this.downloadFullImage());
+        }
+        if (this.saveProjectBtn) {
+            this.saveProjectBtn.addEventListener('click', () => this.saveProject());
         }
 
         if (this.colorCountSlider && this.paletteSelect) {
@@ -484,6 +488,7 @@ class PixelArtGenerator {
                 this.pixelCanvas = canvas;
                 this.downloadPureBtn.disabled = false;
                 this.downloadFullBtn.disabled = false;
+                if (this.saveProjectBtn) this.saveProjectBtn.disabled = false;
                 this.enableExportButton();
             } catch (error) {
                 console.error('生成图纸出错:', error);
@@ -1604,6 +1609,91 @@ class PixelArtGenerator {
         }
     }
 
+    serializeProject() {
+        if (!this.pixelData || !this.pixelData.length) return null;
+        const colorTable = this.currentColors.map(c => ({ hex: c.hex, name: c.name }));
+        const idxByHex = new Map();
+        colorTable.forEach((c, i) => idxByHex.set(c.hex, i));
+        const h = this.pixelData.length;
+        const w = this.pixelData[0].length;
+        const cells = [];
+        for (let y = 0; y < h; y++) {
+            const row = [];
+            for (let x = 0; x < w; x++) {
+                const p = this.pixelData[y][x];
+                if (p.isEmpty) { row.push(-1); continue; }
+                let i = idxByHex.get(p.color.hex);
+                if (i === undefined) {
+                    i = colorTable.length;
+                    idxByHex.set(p.color.hex, i);
+                    colorTable.push({ hex: p.color.hex, name: p.color.name });
+                }
+                row.push(i);
+            }
+            cells.push(row);
+        }
+        const rp = this._currentRenderParams || { pixelSize: 15, gridW: w, gridH: h, coordSize: 30 };
+        return {
+            schemaVersion: 1,
+            id: PDStorage._id(),
+            name: '作品 ' + new Date().toLocaleDateString('zh-CN'),
+            source: 'generator',
+            palette: this.paletteSelect ? this.paletteSelect.value : 'mard221',
+            width: w, height: h,
+            pixelSize: rp.pixelSize, coordSize: rp.coordSize || 30,
+            colorTable: colorTable,
+            cells: cells,
+            thumbnail: PDStorage.buildThumbnail(cells, colorTable),
+            createdAt: Date.now(), updatedAt: Date.now()
+        };
+    }
+
+    saveProject() {
+        if (!this.pixelData || !this.pixelData.length) { showToast('请先生成图纸'); return; }
+        const project = this.serializeProject();
+        if (!project) return;
+        PDStorage.saveProject(project).then(function () {
+            showToast('已保存到本地作品');
+        }).catch(function (e) {
+            showToast('保存失败：' + (e && e.message ? e.message : '本地空间可能已满'));
+        });
+    }
+
+    restoreProject(project) {
+        if (!project || !project.cells) return;
+        const table = project.colorTable || [];
+        const h = project.height, w = project.width;
+        this.pixelData = [];
+        this.beadCountMap.clear();
+        for (let y = 0; y < h; y++) {
+            const row = [];
+            for (let x = 0; x < w; x++) {
+                const idx = project.cells[y] ? project.cells[y][x] : -1;
+                if (idx >= 0 && table[idx]) {
+                    const c = table[idx];
+                    row.push({ color: { hex: c.hex, name: c.name }, x: x, y: y, isEmpty: false });
+                    this.beadCountMap.set(c.hex, (this.beadCountMap.get(c.hex) || 0) + 1);
+                } else {
+                    row.push({ color: { hex: '#cccccc', name: 'Default' }, x: x, y: y, isEmpty: true });
+                }
+            }
+            this.pixelData.push(row);
+        }
+        this.currentColors = table.map(c => ({ hex: c.hex, name: c.name }));
+        if (this.paletteSelect) this.paletteSelect.value = project.palette || 'mard221';
+        const pixelSize = project.pixelSize || 15;
+        const coordSize = project.coordSize || 30;
+        this._currentRenderParams = { pixelSize: pixelSize, gridW: w, gridH: h, coordSize: coordSize };
+        this._calcBoundingBox();
+        this._updatePhysicalSize();
+        this.showColorPalette(this.currentColors);
+        this._rerenderFromData(pixelSize, w, h, coordSize);
+        this.downloadPureBtn.disabled = false;
+        this.downloadFullBtn.disabled = false;
+        if (this.saveProjectBtn) this.saveProjectBtn.disabled = false;
+        showToast('已加载历史作品');
+    }
+
     downloadPureImage() {
         if (!this.pixelData.length) return;
 
@@ -2177,6 +2267,7 @@ class PixelArtGenerator {
         this.colorPalette.innerHTML = '<p class="placeholder">颜色将在这里显示</p>';
         this.downloadPureBtn.disabled = true;
         this.downloadFullBtn.disabled = true;
+        if (this.saveProjectBtn) this.saveProjectBtn.disabled = true;
 
         if (this.statsSection) {
             this.statsSection.style.display = 'none';
@@ -2338,6 +2429,14 @@ class PixelArtGenerator {
 document.addEventListener('DOMContentLoaded', () => {
     const gen = new PixelArtGenerator();
     window._generator = gen;
+
+    // 从「我的作品」页跳转而来，自动加载历史图纸
+    const projectId = new URLSearchParams(location.search).get('project');
+    if (projectId) {
+        PDStorage.getProject(projectId).then(function (p) {
+            if (p) gen.restoreProject(p);
+        });
+    }
 
     // 颜色替换选择器
     window._picker = function(sourceHex) {

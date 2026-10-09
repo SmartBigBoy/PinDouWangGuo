@@ -973,27 +973,26 @@ body {
     margin-top: 8px;
     padding-top: 14px;
     border-top: 1px solid var(--border-color);
-    border-radius: 0;
-    overflow: hidden;
 }
 
 .export-group {
     display: flex;
-    border: 1.5px solid var(--border-color);
-    border-radius: 14px;
-    overflow: hidden;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .btn-export {
     flex: 1;
-    padding: 10px 12px;
+    min-width: 108px;
+    padding: 11px 14px;
     font-size: 0.85rem;
     font-weight: 600;
     color: #fff;
     background: var(--bg-gradient);
     border: none;
-    border-right: 1px solid rgba(255,255,255,0.25);
+    border-radius: 10px;
     cursor: pointer;
+    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.28);
     transition: all 0.15s ease;
     display: inline-flex;
     align-items: center;
@@ -1002,17 +1001,16 @@ body {
     white-space: nowrap;
 }
 
-.btn-export:last-child {
-    border-right: none;
-}
-
 .btn-export:hover:not(:disabled) {
     background: var(--primary-hover);
+    box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.4);
+    transform: translateY(-1px);
 }
 
 .btn-export:disabled {
-    opacity: 0.35;
+    opacity: 0.45;
     cursor: not-allowed;
+    box-shadow: none;
 }
 
 

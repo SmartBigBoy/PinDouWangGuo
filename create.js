@@ -59,6 +59,7 @@ class PixelEditor {
     this.statsEl = document.getElementById('editorStats');
     this.downloadBtn = document.getElementById('editorDownloadBtn');
     this.clearBtn = document.getElementById('editorClearBtn');
+    this.saveBtn = document.getElementById('editorSaveBtn');
     this.canvasTip = document.getElementById('canvasTip');
 
     this.importHeader = document.getElementById('importHeader');
@@ -229,6 +230,7 @@ class PixelEditor {
 
     // 下载
     this.downloadBtn.addEventListener('click', () => this.download());
+    if (this.saveBtn) this.saveBtn.addEventListener('click', () => this.saveProject());
 
     // 清空
     this.clearBtn.addEventListener('click', () => {
@@ -2030,6 +2032,85 @@ class PixelEditor {
     if (this.physicalSizeEl) this.physicalSizeEl.textContent = label;
   }
 
+  // ============ 保存 / 还原 ============
+
+  serializeProject() {
+    if (!this.gridData || !this.gridData.length) return null;
+    const table = [];
+    const idxByHex = new Map();
+    const cells = [];
+    for (let y = 0; y < this.gridHeight; y++) {
+      const row = [];
+      for (let x = 0; x < this.gridWidth; x++) {
+        const c = this.gridData[y] ? this.gridData[y][x] : null;
+        if (!c) { row.push(-1); continue; }
+        let i = idxByHex.get(c.hex);
+        if (i === undefined) {
+          i = table.length;
+          idxByHex.set(c.hex, i);
+          table.push({ hex: c.hex, name: c.name });
+        }
+        row.push(i);
+      }
+      cells.push(row);
+    }
+    return {
+      schemaVersion: 1,
+      id: PDStorage._id(),
+      name: '作品 ' + new Date().toLocaleDateString('zh-CN'),
+      source: 'editor',
+      palette: this.paletteSelect ? this.paletteSelect.value : 'mard221',
+      width: this.gridWidth, height: this.gridHeight,
+      pixelSize: 0, coordSize: 0,
+      colorTable: table,
+      cells: cells,
+      thumbnail: PDStorage.buildThumbnail(cells, table),
+      createdAt: Date.now(), updatedAt: Date.now()
+    };
+  }
+
+  saveProject() {
+    if (!this.gridData || !this.gridData.length || !this.gridData.some(row => row.some(c => c !== null))) {
+      showToast('画布还是空的');
+      return;
+    }
+    const project = this.serializeProject();
+    if (!project) return;
+    PDStorage.saveProject(project).then(function () {
+      showToast('已保存到本地作品');
+    }).catch(function (e) {
+      showToast('保存失败：' + (e && e.message ? e.message : '本地空间可能已满'));
+    });
+  }
+
+  restoreProject(project) {
+    if (!project || !project.cells) return;
+    const table = project.colorTable || [];
+    this.resizeGrid(project.width, project.height);
+    this.gridData = [];
+    for (let y = 0; y < project.height; y++) {
+      const row = [];
+      for (let x = 0; x < project.width; x++) {
+        const idx = project.cells[y] ? project.cells[y][x] : -1;
+        row.push(idx >= 0 && table[idx] ? { hex: table[idx].hex, name: table[idx].name } : null);
+      }
+      this.gridData.push(row);
+    }
+    if (this.paletteSelect) this.paletteSelect.value = project.palette || 'mard221';
+    this.loadPalette();
+    this._updateImportSliderMax();
+    this._lastOffsetX = null; this._lastOffsetY = null;
+    this.render();
+    this._calcBoundingBox();
+    this.updateStats();
+    this._updatePhysicalSize();
+    this.gridSizeSelect.value = 'custom';
+    this.customGridDiv.style.display = 'flex';
+    this.gridWInput.value = project.width;
+    this.gridHInput.value = project.height;
+    showToast('已加载历史作品');
+  }
+
   // ============ 下载 ============
 
   download() {
@@ -2210,4 +2291,12 @@ document.addEventListener('DOMContentLoaded', () => {
   editor.loadPalette();
   // 挂载到全局方便调试
   window.pixelEditor = editor;
+
+  // 从「我的作品」页跳转而来，自动加载历史图纸
+  const projectId = new URLSearchParams(location.search).get('project');
+  if (projectId) {
+    PDStorage.getProject(projectId).then(function (p) {
+      if (p) editor.restoreProject(p);
+    });
+  }
 });
