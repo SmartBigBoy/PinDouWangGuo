@@ -67,9 +67,12 @@ class PixelEditor {
     this.statsHeader = document.getElementById('statsHeader');
     this.statsBody = document.getElementById('statsBody');
 
+    this.leftSidebar = document.getElementById('leftSidebar');
+    this.leftSidebarToggle = document.getElementById('leftSidebarToggle');
+    this.rightSidebar = document.getElementById('rightSidebar');
+    this.rightSidebarToggle = document.getElementById('rightSidebarToggle');
+
     this.importedImageData = null;
-    this.beadSizeSelect = document.getElementById("editorBeadSize");
-    this.physicalSizeEl = document.getElementById("editorPhysicalSize");
 
     // 裁剪弹窗
     this.cropModal = document.getElementById('cropModal');
@@ -124,6 +127,13 @@ class PixelEditor {
       if (this.importHeader) { this.importHeader.classList.add("collapsed-mobile"); this.importBody.classList.add("collapsed-mobile"); }
       if (this.statsHeader) { this.statsHeader.classList.add("collapsed-mobile"); this.statsBody.classList.add("collapsed-mobile"); }
     }
+    // 侧栏收起/展开
+    if (this.leftSidebarToggle) {
+      this.leftSidebarToggle.addEventListener('click', () => this._toggleSidebar('left'));
+    }
+    if (this.rightSidebarToggle) {
+      this.rightSidebarToggle.addEventListener('click', () => this._toggleSidebar('right'));
+    }
     // 网格尺寸
     this.gridSizeSelect.addEventListener('change', () => {
       const val = this.gridSizeSelect.value;
@@ -163,11 +173,6 @@ class PixelEditor {
       this.loadPalette();
       this._updateImportSliderMax();
     });
-
-    // 豆子尺寸切换
-    if (this.beadSizeSelect) {
-      this.beadSizeSelect.addEventListener("change", () => this._updatePhysicalSize());
-    }
 
     // 工具切换
     this.paintBtn.addEventListener('click', () => this.setTool('paint'));
@@ -434,6 +439,42 @@ class PixelEditor {
     this.canvas.width = w;
     this.canvas.height = h;
     this.render();
+  }
+
+  // 收起/展开左或右侧栏
+  _toggleSidebar(side) {
+    const isLeft = side === 'left';
+    const sidebar = isLeft ? this.leftSidebar : this.rightSidebar;
+    const btn = isLeft ? this.leftSidebarToggle : this.rightSidebarToggle;
+    if (!sidebar || !btn) return;
+    const collapsed = sidebar.classList.toggle('collapsed');
+    btn.textContent = isLeft ? (collapsed ? '▶' : '◀') : (collapsed ? '◀' : '▶');
+    btn.title = (isLeft ? '左侧栏' : '右侧栏') + (collapsed ? '：展开' : '：收起');
+    btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    // 等布局生效后按新画布宽度重算格子大小，让绘图区铺满更宽的空间
+    requestAnimationFrame(() => this._refitFromWrap());
+  }
+
+  // 按画布容器实际可用尺寸重算格子大小并重绘（侧栏收起/展开后调用）
+  _refitFromWrap() {
+    const wrap = this.canvasWrap;
+    if (!wrap || !this.gridData.length) { this._fitCanvasToWrap(); return; }
+    const cs = getComputedStyle(wrap);
+    const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+    const padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+    const availW = wrap.clientWidth - padX;
+    const availH = wrap.clientHeight - padY;
+    if (availW <= 0 || availH <= 0) return;
+    const w = this.gridWidth, h = this.gridHeight;
+    // 与 _updateCellSize 一致：图案约占容器 70%，四周留工程空白
+    const base = Math.max(8, Math.min(Math.floor(availW * 0.7 / w), Math.floor(availH * 0.7 / h), 50));
+    this._baseCellSize = base;
+    this.cellSize = base;
+    this._zoomFactor = 1;
+    this._userZoomed = false;
+    this._applySize();
+    this._updateZoomBadge();
+    this._fitCanvasToWrap();
   }
 
   // 从 _zoomFactor 应用缩放（不重绘，由调用方决定是否 render）
@@ -760,7 +801,6 @@ class PixelEditor {
       this.updateStats();
     }
     this._calcBoundingBox();
-    this._updatePhysicalSize();
   }
 
   _floodFill(startX, startY) {
@@ -2017,21 +2057,6 @@ class PixelEditor {
     }
   }
 
-  _updatePhysicalSize() {
-    const beadMM = parseFloat(this.beadSizeSelect ? this.beadSizeSelect.value : 5);
-    const bbox = this._bbox;
-    if (!bbox || bbox.maxX < 0) {
-      if (this.physicalSizeEl) this.physicalSizeEl.textContent = '—';
-      return;
-    }
-    const wBeads = bbox.maxX - bbox.minX + 1;
-    const hBeads = bbox.maxY - bbox.minY + 1;
-    const wCM = ((wBeads * beadMM) / 10).toFixed(1);
-    const hCM = ((hBeads * beadMM) / 10).toFixed(1);
-    const label = wBeads + '×' + hBeads + ' 豆  ' + wCM + '×' + hCM + 'cm';
-    if (this.physicalSizeEl) this.physicalSizeEl.textContent = label;
-  }
-
   // ============ 保存 / 还原 ============
 
   serializeProject() {
@@ -2103,7 +2128,6 @@ class PixelEditor {
     this.render();
     this._calcBoundingBox();
     this.updateStats();
-    this._updatePhysicalSize();
     this.gridSizeSelect.value = 'custom';
     this.customGridDiv.style.display = 'flex';
     this.gridWInput.value = project.width;
@@ -2126,7 +2150,7 @@ class PixelEditor {
     // ===== 右侧信息卡片尺寸（与生成器页全信息图一致） =====
     let pad = 24, rowHeight = 40, boxSize = 24, headH = 88, cardH = 132;
     let contentH = T.h - (cardH + 36);
-    let beadMM2 = parseFloat(this.beadSizeSelect ? this.beadSizeSelect.value : 5);
+    let beadMM2 = 5;
     let bbox2 = this._bbox;
     let hasInfo = !!(bbox2 && bbox2.maxX >= 0);
     let infoH = hasInfo ? 96 : 16;
@@ -2276,10 +2300,15 @@ class PixelEditor {
     drawBrandCard(ctx, brandX, brandY, cardW, cardH);
 
     cvs.toBlob(function(blob) {
+      if (!blob) { showToast('导出失败，请重试'); return; }
+      let url = URL.createObjectURL(blob);
       let link = document.createElement('a');
+      link.href = url;
       link.download = downloadFilename('pixel-art-full', 'png');
-      link.href = URL.createObjectURL(blob); link.click();
-      URL.revokeObjectURL(link.href);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       showToast('已下载全信息图');
     }, 'image/png');
   }

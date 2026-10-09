@@ -93,7 +93,6 @@ class PixelArtGenerator {
         this.downloadFullBtn = document.getElementById('downloadFullBtn');
         this.saveProjectBtn = document.getElementById('saveProjectBtn');
         this.beadSizeSelect = document.getElementById('beadSize');
-        this.physicalSizeEl = document.getElementById('physicalSize');
         this.physicalDimensionsEl = document.getElementById('physicalDimensions');
 
         // 裁剪弹窗元素
@@ -1574,7 +1573,6 @@ class PixelArtGenerator {
         const beadMM = parseFloat(this.beadSizeSelect?.value || 5);
         const bbox = this._bbox;
         if (!bbox || bbox.maxX < 0) {
-            if (this.physicalSizeEl) { this.physicalSizeEl.style.display = 'none'; }
             if (this.physicalDimensionsEl) this.physicalDimensionsEl.textContent = '—';
             return;
         }
@@ -1582,9 +1580,18 @@ class PixelArtGenerator {
         const hBeads = bbox.maxY - bbox.minY + 1;
         const wCM = ((wBeads * beadMM) / 10).toFixed(1);
         const hCM = ((hBeads * beadMM) / 10).toFixed(1);
-        const label = `${wBeads}×${hBeads} 豆  ${wCM}×${hCM}cm`;
-        if (this.physicalSizeEl) { this.physicalSizeEl.textContent = label; this.physicalSizeEl.style.display = ''; }
         if (this.physicalDimensionsEl) this.physicalDimensionsEl.textContent = `${wCM}×${hCM}cm`;
+    }
+
+    /** 总拼豆显示格式：边界框宽×高=总数，如 250×232=58000 */
+    _formatTotalBeads(total) {
+        const bbox = this._bbox;
+        if (bbox && bbox.maxX >= 0) {
+            const wBeads = bbox.maxX - bbox.minX + 1;
+            const hBeads = bbox.maxY - bbox.minY + 1;
+            return `${wBeads}×${hBeads}=${total}`;
+        }
+        return String(total);
     }
 
     updateStats(colors, total, gridWidth, gridHeight) {
@@ -1593,7 +1600,7 @@ class PixelArtGenerator {
             this.statsSection.classList.add('show');
         }
         if (this.totalBeadsEl) {
-            this.totalBeadsEl.textContent = total.toLocaleString();
+            this.totalBeadsEl.textContent = this._formatTotalBeads(total);
         }
         if (this.colorCountUsedEl) {
             this.colorCountUsedEl.textContent = colors.length;
@@ -1785,11 +1792,18 @@ class PixelArtGenerator {
         }
         drawBrandCard(ctx, brandX, brandY, cardW, cardH);
 
-        const link = document.createElement('a');
-        link.download = downloadFilename('pixel-art-pure', 'png');
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        showToast('已下载纯像素图');
+        canvas.toBlob(function(blob) {
+            if (!blob) { showToast('导出失败，请重试'); return; }
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = downloadFilename('pixel-art-pure', 'png');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            showToast('已下载纯像素图');
+        }, 'image/png');
     }
 
     downloadFullImage() {
@@ -2029,11 +2043,18 @@ class PixelArtGenerator {
         if (brandY + cardH > targetHeight - 16) brandY = targetHeight - cardH - 16;
         drawBrandCard(ctx, brandX, brandY, cardW, cardH);
 
-        const link = document.createElement('a');
-        link.download = downloadFilename('pixel-art-full', 'png');
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        showToast('已下载全信息图');
+        canvas.toBlob(function(blob) {
+            if (!blob) { showToast('导出失败，请重试'); return; }
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = downloadFilename('pixel-art-full', 'png');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            showToast('已下载全信息图');
+        }, 'image/png');
     }
 
     exportCsv() {
@@ -2103,10 +2124,14 @@ class PixelArtGenerator {
         }).join(',')).join('\n');
 
         const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
+        link.href = url;
         link.download = downloadFilename('materials-list', 'csv');
+        document.body.appendChild(link);
         link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
         showToast('已下载材料清单');
     }
 
@@ -2210,7 +2235,7 @@ class PixelArtGenerator {
             this.statsSection.style.display = 'block';
             this.statsSection.classList.add('show');
         }
-        if (this.totalBeadsEl) this.totalBeadsEl.textContent = total.toLocaleString();
+        if (this.totalBeadsEl) this.totalBeadsEl.textContent = this._formatTotalBeads(total);
         if (this.colorCountUsedEl) this.colorCountUsedEl.textContent = this.currentColors.filter(c => this.beadCountMap.get(c.hex) > 0).length;
         if (this.gridDimensionsEl) this.gridDimensionsEl.textContent = w + '×' + h;
     }
@@ -2227,7 +2252,6 @@ class PixelArtGenerator {
         this.highlightColor = null;
         this._bbox = null;
         clearTimeout(this._autoGenTimer);
-        if (this.physicalSizeEl) { this.physicalSizeEl.style.display = 'none'; }
         if (this.physicalDimensionsEl) this.physicalDimensionsEl.textContent = '—';
 
         if (this.originalImageContainer) {

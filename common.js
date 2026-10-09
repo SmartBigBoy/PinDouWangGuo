@@ -72,11 +72,8 @@ function drawBrandCard(ctx, x, y, w, h) {
     ctx.lineWidth = Math.max(2, Math.round(h * 0.024));
     ctx.stroke();
 
-    // 品牌图标：粉→紫渐变圆角方块 + 白色豆点
-    const grad = ctx.createLinearGradient(iconX, iconY, iconX + iconSize, iconY + iconSize);
-    grad.addColorStop(0, '#F4A0B8');
-    grad.addColorStop(1, '#8A6FE8');
-    ctx.fillStyle = grad;
+    // 品牌图标：纯色圆角方块 + 白色豆点（iOS Safari 大画布下渐变易丢，改用纯色）
+    ctx.fillStyle = '#F4A0B8';
     roundRect(ctx, iconX, iconY, iconSize, iconSize, Math.round(iconSize * 0.22));
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
@@ -92,10 +89,10 @@ function drawBrandCard(ctx, x, y, w, h) {
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#D4528A';
-    ctx.font = `bold ${nameSize}px "Microsoft YaHei", "PingFang SC", Arial, sans-serif`;
+    ctx.font = `bold ${nameSize}px -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif`;
     ctx.fillText('拼豆王国', textX, y + h * 0.36);
-    ctx.fillStyle = '#777777';
-    ctx.font = `${urlSize}px "Courier New", Consolas, monospace`;
+    ctx.fillStyle = '#555555';
+    ctx.font = `${urlSize}px "Menlo", "Courier", monospace`;
     ctx.fillText('https://pindou.skin', textX, y + h * 0.70);
     ctx.restore();
 }
