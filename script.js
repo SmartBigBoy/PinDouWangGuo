@@ -1701,11 +1701,60 @@ class PixelArtGenerator {
         showToast('已加载历史作品');
     }
 
-    downloadPureImage() {
-        if (!this.pixelData.length) return;
+    // 导出 PNG：按尺寸从大到小降级尝试，带 toBlob 超时兜底，确保 iPad 等 iOS 设备也能下载
+    _exportPng(renderFn, prefix, successMsg) {
+        const sizes = [{ w: 3840, h: 2160 }, { w: 2048, h: 1152 }, { w: 1600, h: 900 }];
+        const startIdx = this._exportStartIdx || 0;
 
-        const targetWidth = 3840;
-        const targetHeight = 2160;
+        const attempt = (idx) => {
+            if (idx >= sizes.length) { showToast('导出失败，请重试'); return; }
+            let canvas;
+            try {
+                canvas = renderFn(sizes[idx].w, sizes[idx].h);
+            } catch (e) {
+                console.error('导出渲染出错:', e);
+                attempt(idx + 1);
+                return;
+            }
+
+            let done = false;
+            const finish = (blob) => {
+                if (done) return;
+                done = true;
+                if (!blob) { attempt(idx + 1); return; }
+                // 记住成功尺寸作为下次起点，避免 iOS 每次下载都等超时降级
+                if (idx > (this._exportStartIdx || 0)) this._exportStartIdx = idx;
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = downloadFilename(prefix, 'png');
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                showToast(successMsg);
+            };
+
+            try {
+                canvas.toBlob(finish, 'image/png');
+            } catch (e) {
+                console.error('toBlob 出错:', e);
+                attempt(idx + 1);
+                return;
+            }
+            // 超时兜底：iOS 上超大 canvas 的 toBlob 可能不触发回调
+            setTimeout(() => finish(null), 2500);
+        };
+
+        attempt(startIdx);
+    }
+
+    downloadPureImage() {
+        if (!this.pixelData.length) { showToast('请先生成图纸'); return; }
+        this._exportPng((w, h) => this._renderPureImage(w, h), 'pixel-art-pure', '已下载纯像素图');
+    }
+
+    _renderPureImage(targetWidth, targetHeight) {
         const coordSize = 60;
 
         const dataWidth = this.pixelData[0].length;
@@ -1791,27 +1840,15 @@ class PixelArtGenerator {
             brandY = targetHeight - cardH - 28;
         }
         drawBrandCard(ctx, brandX, brandY, cardW, cardH);
-
-        canvas.toBlob(function(blob) {
-            if (!blob) { showToast('导出失败，请重试'); return; }
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = downloadFilename('pixel-art-pure', 'png');
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-            showToast('已下载纯像素图');
-        }, 'image/png');
+        return canvas;
     }
 
     downloadFullImage() {
-        if (!this.pixelData.length) return;
+        if (!this.pixelData.length) { showToast('请先生成图纸'); return; }
+        this._exportPng((w, h) => this._renderFullImage(w, h), 'pixel-art-full', '已下载全信息图');
+    }
 
-        const targetWidth = 3840;
-        const targetHeight = 2160;
-
+    _renderFullImage(targetWidth, targetHeight) {
         const dataWidth = this.pixelData[0].length;
         const dataHeight = this.pixelData.length;
         const coordSize = 60;
@@ -2042,19 +2079,7 @@ class PixelArtGenerator {
         let brandY = legendY + legendH + 14;
         if (brandY + cardH > targetHeight - 16) brandY = targetHeight - cardH - 16;
         drawBrandCard(ctx, brandX, brandY, cardW, cardH);
-
-        canvas.toBlob(function(blob) {
-            if (!blob) { showToast('导出失败，请重试'); return; }
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = downloadFilename('pixel-art-full', 'png');
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-            showToast('已下载全信息图');
-        }, 'image/png');
+        return canvas;
     }
 
     exportCsv() {

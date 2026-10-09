@@ -28,6 +28,9 @@ class PixelEditor {
         this._updateCellSize(true);
         this._fitCanvasToWrap();
       }
+      // 横竖屏/断点切换时更新收起按钮方向图标
+      if (this.leftSidebar) this._updateSidebarToggleUI(true, this.leftSidebar.classList.contains('collapsed'));
+      if (this.rightSidebar) this._updateSidebarToggleUI(false, this.rightSidebar.classList.contains('collapsed'));
     });
   }
 
@@ -130,9 +133,11 @@ class PixelEditor {
     // 侧栏收起/展开
     if (this.leftSidebarToggle) {
       this.leftSidebarToggle.addEventListener('click', () => this._toggleSidebar('left'));
+      this._updateSidebarToggleUI(true, false);
     }
     if (this.rightSidebarToggle) {
       this.rightSidebarToggle.addEventListener('click', () => this._toggleSidebar('right'));
+      this._updateSidebarToggleUI(false, false);
     }
     // 网格尺寸
     this.gridSizeSelect.addEventListener('change', () => {
@@ -448,11 +453,30 @@ class PixelEditor {
     const btn = isLeft ? this.leftSidebarToggle : this.rightSidebarToggle;
     if (!sidebar || !btn) return;
     const collapsed = sidebar.classList.toggle('collapsed');
-    btn.textContent = isLeft ? (collapsed ? '▶' : '◀') : (collapsed ? '◀' : '▶');
-    btn.title = (isLeft ? '左侧栏' : '右侧栏') + (collapsed ? '：展开' : '：收起');
+    this._updateSidebarToggleUI(isLeft, collapsed);
     btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
     // 等布局生效后按新画布宽度重算格子大小，让绘图区铺满更宽的空间
     requestAnimationFrame(() => this._refitFromWrap());
+  }
+
+  // 更新收起按钮的图标方向与文字（桌面横向用 ◀▶，平板纵向用 ▲▼）
+  _updateSidebarToggleUI(isLeft, collapsed) {
+    const btn = isLeft ? this.leftSidebarToggle : this.rightSidebarToggle;
+    if (!btn) return;
+    const icon = btn.querySelector('.collapse-icon');
+    const text = btn.querySelector('.collapse-text');
+    const vertical = window.innerWidth <= 1024;
+    let iconChar;
+    if (vertical) {
+      // 纵向布局：左栏在顶部（收起向上▲），右栏在底部（收起向下▼）
+      iconChar = isLeft ? (collapsed ? '▼' : '▲') : (collapsed ? '▲' : '▼');
+    } else {
+      // 横向布局：左栏向左收◀，右栏向右收▶
+      iconChar = isLeft ? (collapsed ? '▶' : '◀') : (collapsed ? '◀' : '▶');
+    }
+    if (icon) icon.textContent = iconChar;
+    if (text) text.textContent = collapsed ? '展开' : '收起';
+    btn.title = (isLeft ? '左侧栏' : '右侧栏') + (collapsed ? '：展开' : '：收起');
   }
 
   // 按画布容器实际可用尺寸重算格子大小并重绘（侧栏收起/展开后调用）

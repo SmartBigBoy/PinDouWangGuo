@@ -821,28 +821,31 @@
         .sidebar-collapse-btn {
             flex-shrink: 0;
             width: 100%;
-            height: 34px;
+            height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 6px;
             border: none;
             border-bottom: 1px solid var(--border-color);
-            background: #fff;
-            color: var(--text-muted);
+            background: #eef0f6;
+            color: #5b6472;
             cursor: pointer;
             font-size: 13px;
+            font-weight: 600;
             line-height: 1;
             padding: 0;
             transition: background 0.15s ease, color 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
         }
-        .sidebar-collapse-btn:hover { background: #eef0f5; color: #333; }
+        .sidebar-collapse-btn:hover { background: #e2e5ee; color: #333; }
+        .sidebar-collapse-btn .collapse-icon { font-size: 14px; }
 
-        /* 仅桌面横向布局显示收起按钮；平板/手机纵向布局隐藏 */
-        @media (max-width: 1024px) {
-            .sidebar-collapse-btn { display: none; }
-        }
+        /* 收起态：隐藏文字，只留方向图标 */
+        .create-sidebar.collapsed .sidebar-collapse-btn .collapse-text,
+        .create-sidebar-right.collapsed .sidebar-collapse-btn .collapse-text { display: none; }
 
-        /* 收起态：侧栏收窄为细条，只留展开按钮（仅桌面横向布局生效） */
+        /* 桌面横向布局：收起为 40px 宽竖向细条 */
         @media (min-width: 1025px) {
             .create-sidebar.collapsed,
             .create-sidebar-right.collapsed { width: 40px; min-width: 40px; }
@@ -850,6 +853,16 @@
             .create-sidebar-right.collapsed .sidebar-scroll { display: none; }
             .create-sidebar.collapsed .sidebar-collapse-btn,
             .create-sidebar-right.collapsed .sidebar-collapse-btn { flex: 1; border-bottom: none; }
+        }
+
+        /* 平板/手机纵向布局：收起为 40px 高横向细条 */
+        @media (max-width: 1024px) {
+            .create-sidebar.collapsed,
+            .create-sidebar-right.collapsed { max-height: 40px; }
+            .create-sidebar.collapsed .sidebar-scroll,
+            .create-sidebar-right.collapsed .sidebar-scroll { display: none; }
+            .create-sidebar.collapsed .sidebar-collapse-btn,
+            .create-sidebar-right.collapsed .sidebar-collapse-btn { height: 40px; border-bottom: none; }
         }
     </style>
 </head>
@@ -859,7 +872,7 @@
     <div class="create-wrapper">
         <!-- 左侧面板 -->
         <div class="create-sidebar" id="leftSidebar">
-            <button class="sidebar-collapse-btn" id="leftSidebarToggle" type="button" title="收起左侧栏" aria-label="收起左侧栏" aria-expanded="true">◀</button>
+            <button class="sidebar-collapse-btn" id="leftSidebarToggle" type="button" title="收起左侧栏" aria-label="收起左侧栏" aria-expanded="true"><span class="collapse-icon">◀</span><span class="collapse-text">收起</span></button>
             <div class="sidebar-scroll">
 
                 <!-- 工具行：绘制工具一组 -->
@@ -938,7 +951,7 @@
 
         <!-- 右侧面板：导入、统计、操作 -->
         <div class="create-sidebar-right" id="rightSidebar">
-            <button class="sidebar-collapse-btn" id="rightSidebarToggle" type="button" title="收起右侧栏" aria-label="收起右侧栏" aria-expanded="true">▶</button>
+            <button class="sidebar-collapse-btn" id="rightSidebarToggle" type="button" title="收起右侧栏" aria-label="收起右侧栏" aria-expanded="true"><span class="collapse-icon">▶</span><span class="collapse-text">收起</span></button>
             <div class="sidebar-scroll">
 
                 <!-- 导入图片（可折叠） -->
